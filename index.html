@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>算数復習ドリル</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #4f46e5;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --radius: 12px;
+}
+body {
+  font-family: -apple-system, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 72px;
+}
+
+/* ── Header ── */
+.header {
+  background: var(--primary);
+  color: white;
+  padding: 14px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.header h1 { font-size: 17px; font-weight: 700; }
+.header-sub { font-size: 12px; opacity: 0.75; margin-top: 1px; }
+
+/* ── Bottom Nav ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: white;
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 100;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+}
+.nav-item {
+  flex: 1;
+  padding: 8px 4px 10px;
+  text-align: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-item.active { color: var(--primary); }
+.nav-icon { font-size: 22px; display: block; margin-bottom: 1px; }
+
+/* ── Layout ── */
+.main { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+/* ── Cards ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  border: 1px solid var(--border);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 13px 20px;
+  border-radius: 10px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); opacity: 0.85; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary   { background: var(--primary); color: white; }
+.btn-success   { background: var(--success); color: white; }
+.btn-danger    { background: var(--danger);  color: white; }
+.btn-outline   { background: white; color: var(--primary); border: 2px solid var(--primary); }
+.btn-gray      { background: #e2e8f0; color: var(--text); }
+.btn-sm        { padding: 8px 14px; font-size: 13px; width: auto; }
+
+/* ── Form ── */
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+.form-input {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  background: white;
+}
+.form-input:focus { border-color: var(--primary); }
+textarea.form-input { resize: vertical; min-height: 90px; line-height: 1.6; }
+
+/* ── Tag chips ── */
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tag-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1.5px solid var(--border);
+  background: white;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.tag-chip.selected { background: var(--primary); border-color: var(--primary); color: white; }
+
+/* ── Photo area ── */
+.photo-area {
+  border: 2px dashed #cbd5e1;
+  border-radius: var(--radius);
+  padding: 28px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: #f8fafc;
+}
+.photo-area:active { border-color: var(--primary); background: #eef2ff; }
+.photo-area img { max-width: 100%; max-height: 220px; border-radius: 8px; object-fit: contain; }
+
+/* ── Badge ── */
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-blue   { background: #e0e7ff; color: #3730a3; }
+.badge-green  { background: #d1fae5; color: #065f46; }
+.badge-yellow { background: #fef3c7; color: #78350f; }
+.badge-purple { background: #f3e8ff; color: #6b21a8; }
+
+/* ── Loading ── */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.spinner {
+  width: 42px; height: 42px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Test ── */
+.problem-text {
+  font-size: 17px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 10px 0;
+}
+.answer-box {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #15803d;
+  margin: 10px 0;
+}
+.explanation-box {
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #78350f;
+  margin: 10px 0;
+}
+.progress-bar-wrap {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ── Stats grid ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.stat-item {
+  background: white;
+  border-radius: 10px;
+  padding: 14px 6px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.stat-num   { font-size: 28px; font-weight: 700; color: var(--primary); }
+.stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* ── Banner ── */
+.today-banner {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+}
+.today-banner h2 { font-size: 20px; margin-bottom: 4px; }
+.today-banner p  { opacity: 0.85; font-size: 14px; }
+
+/* ── Steps ── */
+.steps { display: flex; gap: 6px; margin-bottom: 18px; }
+.step       { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+.step.done  { background: var(--success); }
+.step.active{ background: var(--primary); }
+
+/* ── Alert ── */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.alert-info    { background: #e0e7ff; color: #3730a3; }
+.alert-success { background: #d1fae5; color: #065f46; }
+.alert-warning { background: #fef3c7; color: #78350f; }
+.alert-danger  { background: #fee2e2; color: #991b1b; }
+
+/* ── List ── */
+.problem-item {
+  background: white;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+.problem-item h3 {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.meta-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.btn-row  { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Chart ── */
+.chart-wrap { display: flex; align-items: flex-end; gap: 5px; height: 60px; margin: 8px 0 4px; }
+.chart-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.chart-bar {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  transition: height 0.3s;
+}
+.chart-label { font-size: 10px; color: var(--muted); }
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+.modal {
+  background: white;
+  border-radius: 16px 16px 0 0;
+  padding: 24px 20px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+
+.section-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="header">
+    <h1>📐 算数復習ドリル</h1>
+    <div class="header-sub" id="header-sub"></div>
+  </div>
+
+  <div class="main" id="view"></div>
+
+  <nav class="bottom-nav">
+    <button class="nav-item" onclick="go('home')"     id="nav-home">
+      <span class="nav-icon">🏠</span>ホーム
+    </button>
+    <button class="nav-item" onclick="go('register')" id="nav-register">
+      <span class="nav-icon">📸</span>問題登録
+    </button>
+    <button class="nav-item" onclick="go('test')"     id="nav-test">
+      <span class="nav-icon">✏️</span>テスト
+    </button>
+    <button class="nav-item" onclick="go('list')"     id="nav-list">
+      <span class="nav-icon">📚</span>一覧
+    </button>
+    <button class="nav-item" onclick="go('settings')" id="nav-settings">
+      <span class="nav-icon">⚙️</span>設定
+    </button>
+  </nav>
+</div>
+
+<script>
+// ================================================================
+//  CONSTANTS
+// ================================================================
+const TAGS = ['計算','分数・小数','文章題','図形','面積','割合','速さ','グラフ・表','その他'];
+const STORE_KEY = 'sansu_drill_v2';
+
+// ================================================================
+//  STATE & STORAGE
+// ================================================================
+let S = {
+  view: 'home',
+  settings: {
+    apiKey: '',
+    model: 'claude-haiku-4-5-20251001',
+    supabaseUrl: '',
+    supabaseKey: '',
+    syncId: '',
+  },
+  problems: [],
+  history: [],   // [{ date:'YYYY-MM-DD', total:N, correct:N }]
+  listTag: '',   // 一覧フィルター中の単元
+  // register wizard
+  reg: { step:1, file:null, text:'', answer:'', note:'', tag:'', lastId:null },
+  // test session
+  ses: { queue:[], idx:0, showAns:false, finished:false, correct:0, wrong:0 },
+};
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    if (d.settings) S.settings = { ...S.settings, ...d.settings };
+    if (d.problems) S.problems = d.problems;
+    if (d.history)  S.history  = d.history;
+  } catch(e) {}
+}
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify({
+    settings: S.settings,
+    problems: S.problems,
+    history:  S.history,
+  }));
+  pushToCloud().catch(()=>{});
+}
+
+// ── Supabase cloud sync ──────────────────────────────────────
+function cloudHeaders() {
+  const key = S.settings.supabaseKey;
+  return {
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+async function pushToCloud() {
+  const { supabaseUrl, supabaseKey, syncId } = S.settings;
+  if (!supabaseUrl || !supabaseKey || !syncId) return;
+  await fetch(`${supabaseUrl}/rest/v1/drill_data`, {
+    method: 'POST',
+    headers: { ...cloudHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+    body: JSON.stringify({
+      user_id: syncId,
+      problems: S.problems,
+      history:  S.history,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+}
+
+async function pullFromCloud() {
+  const { supabaseUrl, supabaseKey, syncId } = S.settings;
+  if (!supabaseUrl || !supabaseKey || !syncId) return false;
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/drill_data?user_id=eq.${encodeURIComponent(syncId)}&select=problems,history`,
+    { headers: cloudHeaders() }
+  );
+  if (!res.ok) return false;
+  const data = await res.json();
+  if (!data.length) return false;
+  S.problems = data[0].problems || [];
+  S.history  = data[0].history  || [];
+  return true;
+}
+
+async function syncFromCloud() {
+  const synced = await pullFromCloud().catch(()=>false);
+  if (synced) { save(); render(); }
+}
+
+function genSyncId() {
+  return Array.from({length:4}, ()=>
+    Math.random().toString(36).slice(2,6).toUpperCase()
+  ).join('-');
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ================================================================
+//  SPACED REPETITION  (1→3→7→14→30→60 days)
+// ================================================================
+const INTERVALS = [1, 1, 7, 30];
+
+function updateSchedule(p, correct) {
+  if (correct) {
+    p.rep   = Math.min((p.rep||0) + 1, INTERVALS.length - 1);
+    p.okCnt = (p.okCnt||0) + 1;
+  } else {
+    p.rep   = 0;
+    p.ngCnt = (p.ngCnt||0) + 1;
+  }
+  const d = new Date();
+  d.setDate(d.getDate() + INTERVALS[p.rep]);
+  p.next = d.toISOString().slice(0,10);
+}
+
+function recordHistory(correct) {
+  const t = today();
+  let rec = S.history.find(h => h.date === t);
+  if (!rec) { rec = { date:t, total:0, correct:0 }; S.history.push(rec); }
+  rec.total++;
+  if (correct) rec.correct++;
+  // keep last 60 days only
+  S.history = S.history.slice(-60);
+}
+
+function dueToday() {
+  const t = today();
+  return S.problems.filter(p => !p.next || p.next <= t);
+}
+
+function buildQueue() {
+  const due = dueToday();
+  const q = [];
+  for (const p of due) {
+    if ((p.rep||0) >= 1 && p.similar?.length) {
+      // 2回目以降：類似問題をランダムに出題
+      const s = p.similar[Math.floor(Math.random() * p.similar.length)];
+      q.push({ kind:'sim', p, s });
+    } else {
+      // 1回目 or 類似問題未生成：同じ問題を出題
+      q.push({ kind:'orig', p });
+    }
+  }
+  for (let i = q.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [q[i],q[j]] = [q[j],q[i]];
+  }
+  return q;
+}
+
+// ================================================================
+//  IMAGE UTILS
+// ================================================================
+function compressImage(file, maxPx=1024, quality=0.82) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w=img.width, h=img.height;
+      const scale = Math.min(1, maxPx/w, maxPx/h);
+      w = Math.round(w*scale); h = Math.round(h*scale);
+      const c = document.createElement('canvas');
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(c.toDataURL('image/jpeg', quality).split(',')[1]);
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+// ================================================================
+//  CLAUDE API
+// ================================================================
+async function claude(messages) {
+  if (!S.settings.apiKey) throw new Error('APIキーが設定されていません（設定画面で入力してください）');
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': S.settings.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-allow-browser': 'true',
+    },
+    body: JSON.stringify({ model: S.settings.model, max_tokens: 1024, messages }),
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({}));
+    throw new Error(e.error?.message || `APIエラー (${r.status})`);
+  }
+  const d = await r.json();
+  return d.content[0].text;
+}
+
+async function ocrProblem(b64) {
+  const txt = await claude([{ role:'user', content:[
+    { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } },
+    { type:'text',  text:`小学4年生の算数の問題画像です。
+画像から問題文を読み取り、あなた自身が解いて答えを出してください。
+JSON形式のみで返してください（説明不要）:
+{"problem":"問題文（数式・条件をそのまま）","answer":"あなたが計算した答え","note":"解き方のポイント（1〜2文、小学生向け）"}` }
+  ]}]);
+  const m = txt.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('問題の読み取りに失敗しました');
+  return JSON.parse(m[0]);
+}
+
+async function genSimilar(text, answer, count=3) {
+  const example = Array.from({length:count}, (_,i)=>
+    `{"problem":"問題文${i+1}","answer":"答え${i+1}"}`).join(',');
+  const txt = await claude([{ role:'user', content:
+    `小学4年生算数。同じ単元・難易度で数値だけ変えた類似問題を${count}問。
+元の問題: ${text}
+答え: ${answer}
+
+JSON配列のみで返してください（説明不要）:
+[${example}]`
+  }]);
+  const m = txt.match(/\[[\s\S]*\]/);
+  if (!m) throw new Error('類似問題の生成に失敗しました');
+  return JSON.parse(m[0]);
+}
+
+// ================================================================
+//  ROUTER
+// ================================================================
+function go(view) {
+  S.view = view;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const n = document.getElementById('nav-'+view);
+  if (n) n.classList.add('active');
+  render();
+  window.scrollTo(0,0);
+}
+
+function render() {
+  const fn = { home:vHome, register:vRegister, test:vTest, list:vList, settings:vSettings }[S.view] || vHome;
+  document.getElementById('view').innerHTML = fn();
+  bindEvents();
+}
+
+function showLoading(msg='読み込み中...', sub='') {
+  document.getElementById('view').innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>${msg}</div>
+      ${sub ? `<div style="font-size:13px;color:var(--muted)">${sub}</div>` : ''}
+    </div>`;
+}
+
+// ================================================================
+//  HOME VIEW
+// ================================================================
+function vHome() {
+  const due = dueToday();
+  const t = today();
+  const noKey = !S.settings.apiKey;
+  const mastered = S.problems.filter(p=>(p.rep||0)>=3).length;
+  const dateStr = new Date().toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'});
+
+  // 7日間チャートデータ
+  const days7 = Array.from({length:7}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate()-6+i);
+    const key = d.toISOString().slice(0,10);
+    const rec = S.history.find(h=>h.date===key) || { total:0, correct:0 };
+    return { label: (d.getMonth()+1)+'/'+(d.getDate()), ...rec };
+  });
+  const maxTotal = Math.max(...days7.map(d=>d.total), 1);
+
+  // 単元別集計（苦手TOP3）
+  const tagStats = {};
+  for (const p of S.problems) {
+    const tag = p.tag || 'その他';
+    if (!tagStats[tag]) tagStats[tag] = { ok:0, ng:0 };
+    tagStats[tag].ok += p.okCnt||0;
+    tagStats[tag].ng += p.ngCnt||0;
+  }
+  const weakTags = Object.entries(tagStats)
+    .filter(([,v]) => v.ng > 0)
+    .sort((a,b) => b[1].ng - a[1].ng)
+    .slice(0,3);
+
+  return `
+    ${noKey ? `<div class="alert alert-warning">⚠️ まず「設定」でAPIキーを入力してください</div>` : ''}
+
+    <div class="today-banner">
+      <h2>📅 ${dateStr}</h2>
+      <p>今日の復習: <strong>${due.length}問</strong> が待っています</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-num">${S.problems.length}</div>
+        <div class="stat-label">登録問題</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:var(--warning)">${due.length}</div>
+        <div class="stat-label">今日の復習</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:var(--success)">${mastered}</div>
+        <div class="stat-label">習得済み</div>
+      </div>
+    </div>
+
+    ${due.length > 0
+      ? `<button class="btn btn-primary" style="margin-bottom:10px" onclick="startTest()">
+           ✏️ 今日の確認テストを始める（${due.length}問）
+         </button>`
+      : `<div class="alert alert-success" style="margin-bottom:10px">
+           ✅ 今日の復習はすべて完了です！お疲れさまでした
+         </div>`
+    }
+    <button class="btn btn-outline" onclick="go('register')">📸 新しい問題を登録する</button>
+
+    <!-- 7日間チャート -->
+    <div class="card" style="margin-top:14px">
+      <div class="section-title">📊 直近7日間の取り組み</div>
+      <div class="chart-wrap">
+        ${days7.map(d => {
+          const h = d.total ? Math.max(8, Math.round(d.total/maxTotal*52)) : 2;
+          const okH = d.total ? Math.round(d.correct/d.total*h) : 0;
+          const ngH = h - okH;
+          return `
+            <div class="chart-bar-group">
+              <div style="display:flex;flex-direction:column;justify-content:flex-end;height:54px;gap:1px">
+                ${d.total ? `
+                  <div class="chart-bar" style="height:${okH}px;background:var(--success)"></div>
+                  <div class="chart-bar" style="height:${ngH}px;background:#fca5a5"></div>
+                ` : `<div class="chart-bar" style="height:2px;background:var(--border)"></div>`}
+              </div>
+              <div class="chart-label">${d.label}</div>
+            </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
+        <span><span style="color:var(--success)">■</span> 正解</span>
+        <span><span style="color:#fca5a5">■</span> 不正解</span>
+      </div>
+    </div>
+
+    <!-- 苦手単元 -->
+    ${weakTags.length > 0 ? `
+      <div class="card">
+        <div class="section-title">⚠️ 間違いが多い単元</div>
+        ${weakTags.map(([tag,v]) => {
+          const total = v.ok + v.ng;
+          const pct = Math.round(v.ok/total*100);
+          return `
+            <div style="margin-bottom:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+                <span><span class="badge badge-purple">${esc(tag)}</span></span>
+                <span style="color:var(--muted)">正解率 ${pct}%（${v.ng}回ミス）</span>
+              </div>
+              <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:var(--success);border-radius:3px"></div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+function statusBadge(p) {
+  const t = today();
+  if (!p.next || p.next <= t) return `<span class="badge badge-yellow">復習待ち</span>`;
+  if ((p.rep||0) >= 4)        return `<span class="badge badge-green">習得済み</span>`;
+  const days = Math.ceil((new Date(p.next)-new Date())/86400000);
+  return `<span class="badge badge-blue">次回: ${days}日後</span>`;
+}
+
+// ================================================================
+//  REGISTER VIEW
+// ================================================================
+function vRegister() {
+  const r = S.reg;
+
+  if (r.step === 1) return `
+    <div class="section-title">📸 問題を登録する</div>
+    <div class="steps">
+      <div class="step active"></div><div class="step"></div><div class="step"></div>
+    </div>
+    <div class="card">
+      <div class="form-label">① 問題の写真を撮るか選んでください</div>
+      <label for="photo-in">
+        <div class="photo-area" id="preview-wrap">
+          <div id="preview-ph">
+            <div style="font-size:52px">📷</div>
+            <div style="font-size:15px;margin-top:8px;color:var(--muted)">タップして写真を選ぶ</div>
+            <div style="font-size:12px;color:var(--muted)">カメラ撮影またはアルバムから選択</div>
+          </div>
+        </div>
+      </label>
+      <input type="file" id="photo-in" accept="image/*" capture="environment" style="display:none">
+    </div>
+    <button class="btn btn-primary" id="ocr-btn" disabled onclick="doOCR()">
+      🔍 AIで問題文を読み取る
+    </button>
+    <div style="text-align:center;margin:10px 0;color:var(--muted);font-size:13px">または</div>
+    <button class="btn btn-outline" onclick="manualEntry()">✏️ 手入力で登録する</button>
+  `;
+
+  if (r.step === 2) return `
+    <div class="section-title">📝 内容を確認・修正してください</div>
+    <div class="steps">
+      <div class="step done"></div><div class="step active"></div><div class="step"></div>
+    </div>
+    <div class="card">
+      <div class="form-group">
+        <label class="form-label">単元タグ</label>
+        <div class="tag-row" id="tag-row">
+          ${TAGS.map(t => `
+            <button type="button" class="tag-chip ${r.tag===t?'selected':''}"
+              onclick="selectTag('${t}')">${esc(t)}</button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">問題文</label>
+        <textarea class="form-input" id="f-text" rows="5">${esc(r.text)}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">答え</label>
+        <input class="form-input" id="f-ans" type="text" value="${esc(r.answer)}" placeholder="例: 24">
+      </div>
+      <div class="form-group">
+        <label class="form-label">解き方のポイント（任意）</label>
+        <textarea class="form-input" id="f-note" rows="2">${esc(r.note)}</textarea>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveRegister()">✅ この内容で登録する</button>
+    <button class="btn btn-gray" style="margin-top:8px" onclick="S.reg.step=1;render()">← 戻る</button>
+  `;
+
+  if (r.step === 3) return `
+    <div class="section-title">✅ 登録完了！</div>
+    <div class="steps">
+      <div class="step done"></div><div class="step done"></div><div class="step active"></div>
+    </div>
+    <div class="alert alert-success">問題を登録しました。明日から復習テストに出題されます。</div>
+    <div class="card">
+      ${r.tag ? `<span class="badge badge-purple" style="margin-bottom:8px">${esc(r.tag)}</span>` : ''}
+      <div class="problem-text">${esc(r.text)}</div>
+      <div class="answer-box">答え: ${esc(r.answer)}</div>
+    </div>
+    <div id="sim-area">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <label class="form-label" style="margin:0;white-space:nowrap">生成する問題数:</label>
+        <select class="form-input" id="sim-count" style="width:auto;padding:8px 12px">
+          <option value="1">1問</option>
+          <option value="2">2問</option>
+          <option value="3" selected>3問</option>
+          <option value="4">4問</option>
+          <option value="5">5問</option>
+        </select>
+      </div>
+      <button class="btn btn-outline" id="sim-btn" onclick="doGenSimilar()">🤖 類似問題を自動生成する</button>
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:4px">
+        ※ 追加で約0.1〜0.2円のAPI費用がかかります
+      </div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="resetReg()">📸 続けて別の問題を登録する</button>
+    <button class="btn btn-gray"    style="margin-top:8px"  onclick="go('home')">🏠 ホームに戻る</button>
+  `;
+
+  return '';
+}
+
+function selectTag(t) {
+  S.reg.tag = (S.reg.tag === t) ? '' : t;
+  document.querySelectorAll('.tag-chip').forEach(el => {
+    el.classList.toggle('selected', el.textContent === t && S.reg.tag === t);
+  });
+}
+
+function manualEntry() {
+  S.reg = { step:2, file:null, text:'', answer:'', note:'', tag:'', lastId:null };
+  render();
+}
+
+async function doOCR() {
+  if (!S.reg.file) return;
+  showLoading('AIが問題を読み取っています…', '数秒かかります');
+  try {
+    const b64 = await compressImage(S.reg.file);
+    const res = await ocrProblem(b64);
+    S.reg.text   = res.problem || '';
+    S.reg.answer = res.answer  || '';
+    S.reg.note   = res.note    || '';
+    S.reg.step   = 2;
+    render();
+  } catch(e) {
+    alert('読み取りエラー: ' + e.message);
+    S.reg.step = 1;
+    render();
+  }
+}
+
+function saveRegister() {
+  const text   = document.getElementById('f-text').value.trim();
+  const answer = document.getElementById('f-ans').value.trim();
+  const note   = document.getElementById('f-note').value.trim();
+  if (!text)   { alert('問題文を入力してください'); return; }
+  if (!answer) { alert('答えを入力してください'); return; }
+
+  const p = {
+    id: uid(), text, answer, note,
+    tag: S.reg.tag || '',
+    createdAt: new Date().toISOString(),
+    next: null, rep:0, okCnt:0, ngCnt:0, similar:[]
+  };
+  S.problems.push(p);
+  save();
+
+  S.reg.text = text; S.reg.answer = answer; S.reg.lastId = p.id;
+  S.reg.step = 3;
+  render();
+}
+
+async function doGenSimilar() {
+  const count = parseInt(document.getElementById('sim-count')?.value || '3');
+  const btn = document.getElementById('sim-btn');
+  if (btn) { btn.disabled=true; btn.textContent='🤖 生成中…'; }
+  try {
+    const sims = await genSimilar(S.reg.text, S.reg.answer, count);
+    const p = S.problems.find(x=>x.id===S.reg.lastId);
+    if (p) { p.similar = [...(p.similar||[]), ...sims]; save(); }
+
+    document.getElementById('sim-area').innerHTML = `
+      <div class="alert alert-success">✅ 類似問題を${sims.length}問生成しました！</div>
+      ${sims.map((s,i)=>`
+        <div class="card">
+          <span class="badge badge-blue" style="margin-bottom:8px">類似問題 ${i+1}</span>
+          <div class="problem-text" style="font-size:15px">${esc(s.problem)}</div>
+          <div class="answer-box"  style="font-size:15px">答え: ${esc(s.answer)}</div>
+        </div>
+      `).join('')}
+    `;
+  } catch(e) {
+    document.getElementById('sim-area').innerHTML = `
+      <div class="alert alert-danger">エラー: ${esc(e.message)}</div>
+      <button class="btn btn-outline" onclick="doGenSimilar()">再試行</button>
+    `;
+  }
+}
+
+function resetReg() {
+  S.reg = { step:1, file:null, text:'', answer:'', note:'', tag:'', lastId:null };
+  render();
+}
+
+// ================================================================
+//  TEST VIEW
+// ================================================================
+async function startTest() {
+  // 2回目以降で類似問題が未生成の問題を自動生成
+  const needsSimilar = dueToday().filter(p => (p.rep||0) >= 1 && !p.similar?.length);
+  if (needsSimilar.length > 0) {
+    S.ses = { queue:[], idx:0, showAns:false, finished:false, correct:0, wrong:0 };
+    go('test');
+    showLoading('類似問題を自動生成しています…', `${needsSimilar.length}問分（数秒かかります）`);
+    for (const p of needsSimilar) {
+      try {
+        p.similar = await genSimilar(p.text, p.answer, 3);
+      } catch(e) {
+        // 生成失敗時は元の問題をそのまま出題
+      }
+    }
+    save();
+  }
+  S.ses = { queue:buildQueue(), idx:0, finished:false, correct:0, wrong:0, missed:[], result:null };
+  go('test');
+}
+
+function vTest() {
+  const due = dueToday();
+
+  if (!S.ses.queue.length && !S.ses.finished) {
+    return `
+      <div class="section-title">✏️ 確認テスト</div>
+      ${due.length > 0
+        ? `<div class="card" style="text-align:center;padding:28px">
+             <div style="font-size:48px;margin-bottom:10px">📝</div>
+             <div style="font-size:17px;font-weight:600;margin-bottom:6px">今日の復習: ${due.length}問</div>
+             <div style="font-size:13px;color:var(--muted);margin-bottom:20px">類似問題も含めると${buildQueue().length}問出題されます</div>
+             <button class="btn btn-primary" onclick="startTest()">テストを始める</button>
+           </div>`
+        : `<div class="alert alert-success">✅ 今日の復習は完了しています！</div>
+           <button class="btn btn-outline" onclick="go('home')">🏠 ホームに戻る</button>`
+      }
+    `;
+  }
+
+  if (S.ses.finished) {
+    const { correct, wrong, queue, missed, reviewIdx } = S.ses;
+    const total = queue.length;
+    const pct = total ? Math.round(correct/total*100) : 0;
+
+    // 振り返り中
+    if (missed.length > 0 && reviewIdx < missed.length) {
+      const item  = missed[reviewIdx];
+      const qText = item.kind==='orig' ? item.p.text   : item.s.problem;
+      const qAns  = item.kind==='orig' ? item.p.answer : item.s.answer;
+      const qNote = item.kind==='orig' ? item.p.note   : '';
+      const qTag  = item.p.tag || '';
+      return `
+        <div class="section-title">📖 振り返り</div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px">
+          <span>${reviewIdx+1} / ${missed.length}問</span>
+          <span style="color:var(--danger)">間違えた問題</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" style="width:${Math.round(reviewIdx/missed.length*100)}%;background:var(--danger)"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            ${item.kind==='sim' ? `<span class="badge badge-blue">類似問題</span>` : ''}
+            ${qTag ? `<span class="badge badge-purple">${esc(qTag)}</span>` : ''}
+          </div>
+          <div class="problem-text">${esc(qText)}</div>
+          <div class="answer-box">答え: ${esc(qAns)}</div>
+          ${qNote ? `<div class="explanation-box">📝 ${esc(qNote)}</div>` : ''}
+        </div>
+        <button class="btn btn-primary" onclick="S.ses.reviewIdx++;render()">
+          ${reviewIdx+1 < missed.length ? '次の問題 →' : '振り返りを終わる'}
+        </button>
+      `;
+    }
+
+    // 結果サマリー
+    return `
+      <div class="section-title">✏️ テスト結果</div>
+      <div style="text-align:center;padding:20px 0 16px">
+        <div style="font-size:52px">${pct>=80?'🎉':pct>=50?'👍':'💪'}</div>
+        <div style="font-size:26px;font-weight:700;margin:8px 0">${pct}%</div>
+        <div style="font-size:14px;color:var(--muted)">全${total}問 ⭕${correct}問 ❌${wrong}問</div>
+      </div>
+      ${missed.length > 0
+        ? `<button class="btn btn-outline" style="margin-bottom:10px" onclick="S.ses.reviewIdx=0;render()">📖 振り返りをもう一度見る</button>`
+        : `<div class="alert alert-success">✅ 全問正解！素晴らしい！</div>`
+      }
+      <button class="btn btn-primary" onclick="go('home')">🏠 ホームに戻る</button>
+      ${due.length > 0 ? `<button class="btn btn-outline" style="margin-top:8px" onclick="startTest()">もう一度テストする</button>` : ''}
+    `;
+  }
+
+  const { queue, idx, result } = S.ses;
+  const item  = queue[idx];
+  const qText = item.kind==='orig' ? item.p.text   : item.s.problem;
+  const qAns  = item.kind==='orig' ? item.p.answer : item.s.answer;
+  const qTag  = item.p.tag || '';
+  const pct   = Math.round(idx/queue.length*100);
+
+  return `
+    <div class="section-title">✏️ 確認テスト</div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px">
+      <span>${idx+1} / ${queue.length}問</span><span>${pct}%</span>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+
+    <div class="card">
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        ${item.kind==='sim' ? `<span class="badge badge-blue">類似問題</span>` : ''}
+        ${qTag ? `<span class="badge badge-purple">${esc(qTag)}</span>` : ''}
+      </div>
+      <div class="problem-text">${esc(qText)}</div>
+    </div>
+
+    ${result === null ? `
+      <div class="form-group">
+        <label class="form-label">答えを入力してください（単位は省略可）</label>
+        <input class="form-input" id="ans-input" type="text"
+          inputmode="decimal" autocomplete="off"
+          placeholder="例: 24 または 24cm"
+          style="font-size:20px;text-align:center;letter-spacing:2px"
+          onkeydown="if(event.key==='Enter')submitAnswer()">
+      </div>
+      <button class="btn btn-primary" onclick="submitAnswer()">確認する</button>
+    ` : `
+      <div style="text-align:center;padding:16px 0 8px">
+        <div style="font-size:52px">${result ? '⭕' : '❌'}</div>
+        <div style="font-size:15px;color:var(--muted);margin-top:6px">
+          ${result ? '正解！' : `不正解（正解: ${esc(qAns)}）`}
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="nextQuestion()">
+        ${idx+1 < queue.length ? '次の問題 →' : '結果を見る'}
+      </button>
+    `}
+  `;
+}
+
+function normalizeAnswer(str) {
+  return String(str||'')
+    .trim()
+    // 全角数字・記号を半角に
+    .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/[．]/g, '.')
+    // 単位・助数詞・スペースを除去
+    .replace(/\s/g, '')
+    .replace(/(cm|mm|km|㎝|㎞|m²|cm²|㎡|㎢|m³|㎥|dl|dL|ml|mL|l|L|kg|mg|g|km|ha|m|度|円|枚|個|本|冊|台|匹|頭|羽|杯|人|時間|分|秒|年|月|日|週|回)/gi, '')
+    .toLowerCase();
+}
+
+function submitAnswer() {
+  const input = document.getElementById('ans-input');
+  const userVal = input?.value?.trim();
+  if (!userVal) { input?.focus(); return; }
+
+  const item = S.ses.queue[S.ses.idx];
+  const correct_ans = item.kind==='orig' ? item.p.answer : item.s.answer;
+  const correct = normalizeAnswer(userVal) === normalizeAnswer(correct_ans);
+  S.ses.result = correct;
+
+  if (item.kind === 'orig') updateSchedule(item.p, correct);
+  recordHistory(correct);
+  save();
+
+  if (correct) { S.ses.correct++; } else { S.ses.wrong++; S.ses.missed.push(item); }
+  render();
+}
+
+function nextQuestion() {
+  const next = S.ses.idx + 1;
+  if (next >= S.ses.queue.length) {
+    S.ses.finished = true;
+    S.ses.reviewIdx = 0;
+  } else {
+    S.ses.idx = next;
+    S.ses.result = null;
+  }
+  render();
+}
+
+// ================================================================
+//  LIST VIEW
+// ================================================================
+function vList() {
+  const allPs = [...S.problems].reverse();
+  const filtered = S.listTag ? allPs.filter(p=>p.tag===S.listTag) : allPs;
+
+  return `
+    <div class="section-title">📚 問題一覧（全${S.problems.length}問）</div>
+
+    <!-- 単元フィルター -->
+    <div class="tag-row" style="margin-bottom:12px">
+      <button class="tag-chip ${!S.listTag?'selected':''}" onclick="setListTag('')">すべて</button>
+      ${TAGS.filter(t => S.problems.some(p=>p.tag===t)).map(t=>`
+        <button class="tag-chip ${S.listTag===t?'selected':''}" onclick="setListTag('${t}')">${esc(t)}</button>
+      `).join('')}
+    </div>
+
+    ${filtered.length === 0 ? `
+      <div class="alert alert-info">
+        ${S.problems.length===0 ? 'まだ問題が登録されていません' : 'この単元の問題はありません'}
+      </div>
+      ${S.problems.length===0 ? `<button class="btn btn-primary" onclick="go('register')">📸 問題を登録する</button>` : ''}
+    ` : filtered.map(p=>`
+      <div class="problem-item">
+        <div class="meta-row">
+          ${statusBadge(p)}
+          ${p.tag ? `<span class="badge badge-purple">${esc(p.tag)}</span>` : ''}
+          <span style="font-size:12px;color:var(--muted)">⭕${p.okCnt||0} ❌${p.ngCnt||0}</span>
+          ${p.similar?.length ? `<span class="badge badge-green">類似${p.similar.length}問</span>` : ''}
+        </div>
+        <h3>${esc(p.text)}</h3>
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" onclick="editProblem('${p.id}')">編集</button>
+          <button class="btn btn-primary btn-sm" onclick="openSimModal('${p.id}')">
+            ${p.similar?.length ? `類似追加` : `類似生成`}
+          </button>
+          <button class="btn btn-gray btn-sm"    onclick="delProblem('${p.id}')">削除</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function setListTag(t) {
+  S.listTag = t;
+  render();
+}
+
+
+function editProblem(id) {
+  const p = S.problems.find(x=>x.id===id);
+  if (!p) return;
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">問題を編集</div>
+      <div class="form-group">
+        <label class="form-label">単元タグ</label>
+        <div class="tag-row" id="edit-tag-row">
+          ${TAGS.map(t=>`
+            <button type="button" class="tag-chip ${p.tag===t?'selected':''}"
+              onclick="toggleEditTag(this,'${t}')">${esc(t)}</button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">問題文</label>
+        <textarea class="form-input" id="edit-text" rows="5">${esc(p.text)}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">答え</label>
+        <input class="form-input" id="edit-ans" type="text" value="${esc(p.answer)}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">解き方のポイント（任意）</label>
+        <textarea class="form-input" id="edit-note" rows="2">${esc(p.note)}</textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveEdit('${p.id}',this)">💾 保存する</button>
+      <button class="btn btn-gray" style="margin-top:8px" onclick="this.closest('.modal-overlay').remove()">キャンセル</button>
+      ${p.similar?.length ? `
+        <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+          <div class="section-title">類似問題（${p.similar.length}問）</div>
+          <div id="edit-sim-list">
+            ${p.similar.map((s,i)=>`
+              <div class="card" id="esim-${p.id}-${i}">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+                  <span class="badge badge-blue">類似 ${i+1}</span>
+                  <button class="btn btn-danger btn-sm" style="padding:4px 10px;font-size:12px"
+                    onclick="delSimilar('${p.id}',${i},this)">削除</button>
+                </div>
+                <div style="font-size:13px;line-height:1.6">${esc(s.problem)}</div>
+                <div style="color:var(--success);font-weight:600;font-size:13px;margin-top:6px">答え: ${esc(s.answer)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  el.addEventListener('click', e=>{ if(e.target===el) el.remove(); });
+  document.body.appendChild(el);
+}
+
+function delSimilar(problemId, idx, btn) {
+  const p = S.problems.find(x=>x.id===problemId);
+  if (!p) return;
+  p.similar.splice(idx, 1);
+  save();
+  // Re-render the similar list in the modal
+  const listEl = document.getElementById('edit-sim-list');
+  if (!listEl) return;
+  if (p.similar.length === 0) {
+    listEl.closest('div').remove();
+    return;
+  }
+  listEl.innerHTML = p.similar.map((s,i)=>`
+    <div class="card" id="esim-${p.id}-${i}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+        <span class="badge badge-blue">類似 ${i+1}</span>
+        <button class="btn btn-danger btn-sm" style="padding:4px 10px;font-size:12px"
+          onclick="delSimilar('${p.id}',${i},this)">削除</button>
+      </div>
+      <div style="font-size:13px;line-height:1.6">${esc(s.problem)}</div>
+      <div style="color:var(--success);font-weight:600;font-size:13px;margin-top:6px">答え: ${esc(s.answer)}</div>
+    </div>
+  `).join('');
+}
+
+function toggleEditTag(btn, t) {
+  document.querySelectorAll('#edit-tag-row .tag-chip').forEach(el => el.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function saveEdit(id, btn) {
+  const p = S.problems.find(x=>x.id===id);
+  if (!p) return;
+  const text   = document.getElementById('edit-text').value.trim();
+  const answer = document.getElementById('edit-ans').value.trim();
+  const note   = document.getElementById('edit-note').value.trim();
+  const tagEl  = document.querySelector('#edit-tag-row .tag-chip.selected');
+  if (!text)   { alert('問題文を入力してください'); return; }
+  if (!answer) { alert('答えを入力してください'); return; }
+  p.text   = text;
+  p.answer = answer;
+  p.note   = note;
+  p.tag    = tagEl ? tagEl.textContent : '';
+  save();
+  btn.closest('.modal-overlay').remove();
+  render();
+}
+
+function openSimModal(id) {
+  const p = S.problems.find(x=>x.id===id);
+  if (!p) return;
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">類似問題を生成する</div>
+      ${p.similar?.length ? `<div class="alert alert-info">現在 ${p.similar.length}問の類似問題があります。追加で生成します。</div>` : ''}
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+        <label class="form-label" style="margin:0;white-space:nowrap">生成する問題数:</label>
+        <select class="form-input" id="modal-sim-count" style="width:auto;padding:8px 12px">
+          <option value="1">1問</option>
+          <option value="2">2問</option>
+          <option value="3" selected>3問</option>
+          <option value="4">4問</option>
+          <option value="5">5問</option>
+        </select>
+      </div>
+      <div id="modal-sim-result"></div>
+      <button class="btn btn-primary" id="modal-sim-btn" onclick="doSimModal('${id}',this)">🤖 生成する</button>
+      <button class="btn btn-gray" style="margin-top:8px" onclick="this.closest('.modal-overlay').remove();render()">閉じる</button>
+    </div>
+  `;
+  el.addEventListener('click', e=>{ if(e.target===el){ el.remove(); render(); } });
+  document.body.appendChild(el);
+}
+
+async function doSimModal(id, btn) {
+  const p = S.problems.find(x=>x.id===id);
+  if (!p) return;
+  const count = parseInt(document.getElementById('modal-sim-count').value);
+  btn.disabled = true; btn.textContent = '生成中…';
+  const resultEl = document.getElementById('modal-sim-result');
+  try {
+    const sims = await genSimilar(p.text, p.answer, count);
+    p.similar = [...(p.similar||[]), ...sims];
+    save();
+    resultEl.innerHTML = `
+      <div class="alert alert-success">✅ ${sims.length}問追加しました（合計${p.similar.length}問）</div>
+      ${sims.map((s,i)=>`
+        <div class="card">
+          <div style="font-size:13px;line-height:1.5">${esc(s.problem)}</div>
+          <div style="color:var(--success);font-weight:600;font-size:13px;margin-top:6px">答え: ${esc(s.answer)}</div>
+        </div>
+      `).join('')}
+    `;
+    btn.textContent = 'さらに生成する'; btn.disabled = false;
+  } catch(e) {
+    resultEl.innerHTML = `<div class="alert alert-danger">エラー: ${esc(e.message)}</div>`;
+    btn.textContent = '再試行'; btn.disabled = false;
+  }
+}
+
+function delProblem(id) {
+  if (!confirm('この問題を削除しますか？')) return;
+  S.problems = S.problems.filter(x=>x.id!==id);
+  save();
+  render();
+}
+
+// ================================================================
+//  SETTINGS VIEW
+// ================================================================
+function vSettings() {
+  const { supabaseUrl, supabaseKey, syncId } = S.settings;
+  const cloudOk = supabaseUrl && supabaseKey && syncId;
+  return `
+    <div class="section-title">⚙️ 設定</div>
+
+    <div class="card">
+      <div class="form-group">
+        <label class="form-label">Claude APIキー</label>
+        <input class="form-input" type="password" id="key-in"
+          value="${esc(S.settings.apiKey)}"
+          placeholder="sk-ant-api03-…">
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">
+          console.anthropic.com で取得したキーを入力してください
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">💾 保存する</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">☁️ クラウド同期（Supabase）</div>
+      ${cloudOk
+        ? `<div class="alert alert-success" style="margin-bottom:12px">✅ 同期設定済み</div>`
+        : `<div class="alert alert-info" style="margin-bottom:12px">設定するとスマホ・PCでデータを共有できます</div>`
+      }
+      <div class="form-group">
+        <label class="form-label">Project URL</label>
+        <input class="form-input" type="text" id="sb-url"
+          value="${esc(supabaseUrl)}"
+          placeholder="https://xxxx.supabase.co">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Publishable key</label>
+        <input class="form-input" type="password" id="sb-key"
+          value="${esc(supabaseKey)}"
+          placeholder="sb_publishable_…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">同期ID（複数端末で同じIDを使う）</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" type="text" id="sb-sid"
+            value="${esc(syncId)}"
+            placeholder="自動生成されます"
+            style="font-family:monospace;letter-spacing:1px">
+          <button class="btn btn-gray btn-sm" onclick="document.getElementById('sb-sid').value=genSyncId()">
+            生成
+          </button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">
+          2台目の端末には同じIDを入力してください
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveCloudSettings()">💾 保存して同期する</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">💰 費用の目安（Haiku使用）</div>
+      <div style="font-size:14px;line-height:2;color:var(--muted)">
+        写真から問題を読み取る: 約 <strong>0.1〜0.2円</strong><br>
+        類似問題を3問生成する:  約 <strong>0.1〜0.2円</strong><br>
+        月100問登録してもおよそ <strong>100〜200円</strong>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📖 使い方</div>
+      <ol style="font-size:14px;line-height:2.2;padding-left:18px;color:var(--muted)">
+        <li>「問題登録」から間違えた問題の写真を撮る</li>
+        <li>AIが問題文・答えを自動で読み取る</li>
+        <li>単元タグをつけておくと後で整理しやすい</li>
+        <li>類似問題を生成しておくと練習量が増える</li>
+        <li>毎日「テスト」を実行して復習する</li>
+        <li>正解すると出題間隔が自動で延びていく</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📦 データ管理</div>
+      <button class="btn btn-danger btn-sm" onclick="clearAll()">全データ削除</button>
+    </div>
+  `;
+}
+
+function saveSettings() {
+  S.settings.apiKey = document.getElementById('key-in').value.trim();
+  save();
+  alert('保存しました！');
+}
+
+async function saveCloudSettings() {
+  const url = document.getElementById('sb-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('sb-key').value.trim();
+  const sid = document.getElementById('sb-sid').value.trim();
+  if (!url || !key) { alert('Project URLとPublishable keyを入力してください'); return; }
+  if (!sid) { alert('同期IDを入力または生成してください'); return; }
+  S.settings.supabaseUrl = url;
+  S.settings.supabaseKey = key;
+  S.settings.syncId      = sid;
+  save();
+
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '同期中…';
+  const ok = await pullFromCloud().catch(()=>false);
+  if (ok) {
+    save();
+    btn.disabled = false; btn.textContent = '💾 保存して同期する';
+    alert('同期しました！');
+    render();
+  } else {
+    // 新規 — クラウドへ初回アップロード
+    await pushToCloud().catch(()=>{});
+    btn.disabled = false; btn.textContent = '💾 保存して同期する';
+    alert('設定を保存しました！次回からデータが自動同期されます。');
+    render();
+  }
+}
+
+
+function clearAll() {
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">⚠️ 全データを削除しますか？</div>
+      <div class="alert alert-danger" style="margin-bottom:16px">
+        登録した問題・類似問題・テスト履歴がすべて消えます。<br>この操作は元に戻せません。
+      </div>
+      <button class="btn btn-danger" onclick="confirmClearAll(this)">削除する</button>
+      <button class="btn btn-gray" style="margin-top:8px" onclick="this.closest('.modal-overlay').remove()">キャンセル</button>
+    </div>
+  `;
+  el.addEventListener('click', e=>{ if(e.target===el) el.remove(); });
+  document.body.appendChild(el);
+}
+
+function confirmClearAll(btn) {
+  S.problems = []; S.history = [];
+  save();
+  btn.closest('.modal-overlay').remove();
+  render();
+}
+
+// ================================================================
+//  EVENT BINDING
+// ================================================================
+function bindEvents() {
+  const photoIn = document.getElementById('photo-in');
+  if (photoIn) {
+    photoIn.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      S.reg.file = file;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const ph = document.getElementById('preview-ph');
+        if (ph) ph.innerHTML = `<img src="${ev.target.result}" alt="選択した写真">`;
+      };
+      reader.readAsDataURL(file);
+      const btn = document.getElementById('ocr-btn');
+      if (btn) btn.disabled = false;
+    });
+  }
+}
+
+// ================================================================
+//  INIT
+// ================================================================
+load();
+if (!S.settings.apiKey) {
+  go('settings');
+} else {
+  go('home');
+  syncFromCloud(); // バックグラウンドでクラウドから最新データを取得
+}
+</script>
+</body>
+</html>
