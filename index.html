@@ -539,22 +539,31 @@ function compressImage(file, maxPx=1024, quality=0.82) {
 // ================================================================
 async function claude(messages) {
   if (!S.settings.apiKey) throw new Error('APIキーが設定されていません（設定画面で入力してください）');
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': S.settings.apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-allow-browser': 'true',
-    },
-    body: JSON.stringify({ model: S.settings.model, max_tokens: 1024, messages }),
+  // fetchはSafariで"Load failed"になることがあるためXHRを使用
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://api.anthropic.com/v1/messages');
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('x-api-key', S.settings.apiKey);
+    xhr.setRequestHeader('anthropic-version', '2023-06-01');
+    xhr.setRequestHeader('anthropic-dangerous-allow-browser', 'true');
+    xhr.timeout = 60000;
+    xhr.onload = function() {
+      try {
+        const d = JSON.parse(this.responseText);
+        if (this.status >= 200 && this.status < 300) {
+          resolve(d.content[0].text);
+        } else {
+          reject(new Error(d.error?.message || `APIエラー (${this.status})`));
+        }
+      } catch(e) {
+        reject(new Error(`レスポンス解析エラー (${this.status})`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('ネットワークエラー（インターネット接続を確認してください）'));
+    xhr.ontimeout = () => reject(new Error('タイムアウト（時間がかかりすぎています）'));
+    xhr.send(JSON.stringify({ model: S.settings.model, max_tokens: 1024, messages }));
   });
-  if (!r.ok) {
-    const e = await r.json().catch(()=>({}));
-    throw new Error(e.error?.message || `APIエラー (${r.status})`);
-  }
-  const d = await r.json();
-  return d.content[0].text;
 }
 
 async function ocrProblem(b64) {
