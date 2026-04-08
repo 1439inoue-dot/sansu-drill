@@ -1466,17 +1466,147 @@ function bindEvents() {
     photoIn.addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
-      S.reg.file = file;
       const reader = new FileReader();
-      reader.onload = ev => {
-        const ph = document.getElementById('preview-ph');
-        if (ph) ph.innerHTML = `<img src="${ev.target.result}" alt="選択した写真">`;
-      };
+      reader.onload = ev => openCropModal(ev.target.result, file);
       reader.readAsDataURL(file);
-      const btn = document.getElementById('ocr-btn');
-      if (btn) btn.disabled = false;
     });
   }
+}
+
+// ── Crop Modal ────────────────────────────────────────────────
+let cropState = { startX:0, startY:0, endX:0, endY:0, dragging:false, imgW:0, imgH:0, scale:1, origDataUrl:'' };
+
+function openCropModal(dataUrl, file) {
+  cropState.origDataUrl = dataUrl;
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.id = 'crop-modal';
+  el.style.alignItems = 'center';
+  el.innerHTML = `
+    <div class="modal" style="border-radius:16px;max-height:94vh;padding:16px">
+      <div class="modal-title">✂️ トリミング</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px">範囲をドラッグして選択してください</div>
+      <div style="position:relative;display:inline-block;max-width:100%;user-select:none" id="crop-wrap">
+        <img id="crop-img" src="${dataUrl}" style="max-width:100%;display:block;border-radius:8px">
+        <canvas id="crop-overlay" style="position:absolute;top:0;left:0;pointer-events:none"></canvas>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+        <button class="btn btn-gray" onclick="skipCrop('${encodeURIComponent(dataUrl)}')">そのまま使う</button>
+        <button class="btn btn-primary" onclick="applyCrop()">✂️ トリミング</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+
+  const img = document.getElementById('crop-img');
+  img.onload = () => {
+    const canvas = document.getElementById('crop-overlay');
+    canvas.width  = img.offsetWidth;
+    canvas.height = img.offsetHeight;
+    cropState.imgW  = img.offsetWidth;
+    cropState.imgH  = img.offsetHeight;
+    cropState.scale = img.naturalWidth / img.offsetWidth;
+    cropState.startX = cropState.startY = cropState.endX = cropState.endY = 0;
+    bindCropEvents(canvas);
+  };
+  if (img.complete) img.onload();
+}
+
+function bindCropEvents(canvas) {
+  const getPos = e => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  };
+  const start = e => {
+    e.preventDefault();
+    const p = getPos(e);
+    cropState.startX = cropState.endX = p.x;
+    cropState.startY = cropState.endY = p.y;
+    cropState.dragging = true;
+    drawCropBox();
+  };
+  const move = e => {
+    if (!cropState.dragging) return;
+    e.preventDefault();
+    const p = getPos(e);
+    cropState.endX = Math.max(0, Math.min(p.x, cropState.imgW));
+    cropState.endY = Math.max(0, Math.min(p.y, cropState.imgH));
+    drawCropBox();
+  };
+  const end = () => { cropState.dragging = false; };
+
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  move);
+  canvas.addEventListener('mouseup',    end);
+  canvas.addEventListener('touchstart', start, { passive:false });
+  canvas.addEventListener('touchmove',  move,  { passive:false });
+  canvas.addEventListener('touchend',   end);
+}
+
+function drawCropBox() {
+  const canvas = document.getElementById('crop-overlay');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const { startX, startY, endX, endY, imgW, imgH } = cropState;
+  ctx.clearRect(0, 0, imgW, imgH);
+  // 暗いオーバーレイ
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(0, 0, imgW, imgH);
+  // 選択範囲を切り抜き
+  const x = Math.min(startX, endX), y = Math.min(startY, endY);
+  const w = Math.abs(endX - startX), h = Math.abs(endY - startY);
+  if (w > 4 && h > 4) {
+    ctx.clearRect(x, y, w, h);
+    ctx.strokeStyle = '#4f46e5';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+  }
+}
+
+function applyCrop() {
+  const { startX, startY, endX, endY, scale, origDataUrl } = cropState;
+  const x = Math.min(startX, endX), y = Math.min(startY, endY);
+  const w = Math.abs(endX - startX), h = Math.abs(endY - startY);
+
+  if (w < 10 || h < 10) {
+    alert('トリミング範囲が小さすぎます。もう一度ドラッグしてください。');
+    return;
+  }
+
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width  = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    canvas.getContext('2d').drawImage(img,
+      Math.round(x * scale), Math.round(y * scale),
+      canvas.width, canvas.height,
+      0, 0, canvas.width, canvas.height
+    );
+    const croppedUrl = canvas.toDataURL('image/jpeg', 0.92);
+    finalizeCrop(croppedUrl);
+  };
+  img.src = origDataUrl;
+}
+
+function skipCrop(encodedUrl) {
+  finalizeCrop(decodeURIComponent(encodedUrl));
+}
+
+function finalizeCrop(dataUrl) {
+  document.getElementById('crop-modal')?.remove();
+  // DataURLをFileオブジェクトに変換
+  const arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  const u8 = new Uint8Array(bstr.length);
+  for (let i=0; i<bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+  S.reg.file = new File([u8], 'photo.jpg', { type: mime });
+
+  const ph = document.getElementById('preview-ph');
+  if (ph) ph.innerHTML = `<img src="${dataUrl}" alt="選択した写真">`;
+  const btn = document.getElementById('ocr-btn');
+  if (btn) btn.disabled = false;
 }
 
 // ================================================================
