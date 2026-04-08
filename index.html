@@ -686,6 +686,34 @@ JSON配列のみで返してください（説明不要）:
 }
 
 // 2つの円が「重なり」になっている場合を自動修正（片方が内側に収まるべきとき）
+// 複数答えを分割する（"ア：16cm、イ：4cm" → [{label:"ア",val:"16cm"},{label:"イ",val:"4cm"}]）
+function splitAnswer(ans) {
+  if (!ans) return null;
+  // "ア：X、イ：Y" や "①X、②Y" パターンを検出
+  const parts = ans.split(/[、，,]/).map(s => s.trim()).filter(s => s);
+  if (parts.length < 2) return null;
+  const parsed = parts.map(p => {
+    const m = p.match(/^([ア-ン①-⑩(（][\d\w]*[)）]?)[：:]\s*(.+)$/);
+    return m ? { label: m[1], val: m[2] } : null;
+  });
+  if (parsed.every(p => p !== null)) return parsed;
+  return null;
+}
+// 分割フィールドから答えを組み立てる
+function collectAnswer() {
+  const parts = document.querySelectorAll('.f-ans-part');
+  if (parts.length > 0) {
+    return Array.from(parts).map(p => `${p.dataset.label}：${p.value.trim()}`).join('、');
+  }
+  return document.getElementById('f-ans')?.value.trim() || '';
+}
+// 答えを表示用にフォーマット（複数ある場合は改行区切り）
+function formatAnswer(ans) {
+  const parts = splitAnswer(ans);
+  if (parts) return parts.map(p => `${p.label}：${p.val}`).join('<br>');
+  return esc(ans);
+}
+
 // 円だけでなく点・ラベル・寸法線も連動して修正する
 function autoFixCircles(visual) {
   if (!visual || visual.type !== 'shape') return visual;
@@ -1037,10 +1065,20 @@ function vRegister() {
         <label class="form-label">問題文</label>
         <textarea class="form-input" id="f-text" rows="5">${esc(r.text)}</textarea>
       </div>
-      <div class="form-group">
-        <label class="form-label">答え</label>
-        <input class="form-input" id="f-ans" type="text" value="${esc(r.answer)}" placeholder="例: 24">
-      </div>
+      ${(() => {
+        const parts = splitAnswer(r.answer);
+        if (parts) return `<div class="form-group">
+          <label class="form-label">答え</label>
+          ${parts.map(p => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-weight:600;min-width:24px;color:var(--primary)">${esc(p.label)}：</span>
+            <input class="form-input f-ans-part" type="text" data-label="${esc(p.label)}" value="${esc(p.val)}" style="margin:0">
+          </div>`).join('')}
+        </div>`;
+        return `<div class="form-group">
+          <label class="form-label">答え</label>
+          <input class="form-input" id="f-ans" type="text" value="${esc(r.answer)}" placeholder="例: 24">
+        </div>`;
+      })()}
       <div class="form-group">
         <label class="form-label">解き方のポイント（任意）</label>
         <textarea class="form-input" id="f-note" rows="2">${esc(r.note)}</textarea>
@@ -1065,7 +1103,7 @@ function vRegister() {
     <div class="card">
       ${r.tag ? `<span class="badge badge-purple" style="margin-bottom:8px">${esc(r.tag)}</span>` : ''}
       <div class="problem-text">${esc(r.text)}</div>
-      <div class="answer-box">答え: ${esc(r.answer)}</div>
+      <div class="answer-box">答え: ${formatAnswer(r.answer)}</div>
     </div>
     ${hasMore ? `
       <button class="btn btn-primary" style="margin-top:4px" onclick="loadNextMultiProblem()">
@@ -1109,7 +1147,7 @@ function manualEntry() {
 function switchMultiProblem(idx) {
   // 現在の編集内容をmultiProblemsに保存
   const text = document.getElementById('f-text')?.value.trim();
-  const ans  = document.getElementById('f-ans')?.value.trim();
+  const ans  = collectAnswer();
   const note = document.getElementById('f-note')?.value.trim();
   if (S.reg.multiProblems && text !== undefined) {
     S.reg.multiProblems[S.reg.multiIdx] = { problem: text, answer: ans || '', note: note || '', visual: S.reg.visual || null };
@@ -1178,7 +1216,7 @@ async function doOCR() {
 
 function saveRegister() {
   const text   = document.getElementById('f-text').value.trim();
-  const answer = document.getElementById('f-ans').value.trim();
+  const answer = collectAnswer();
   const note   = document.getElementById('f-note').value.trim();
   if (!text)   { alert('問題文を入力してください'); return; }
   if (!answer) { alert('答えを入力してください'); return; }
@@ -1214,7 +1252,7 @@ async function doGenSimilar() {
           <span class="badge badge-blue" style="margin-bottom:8px">類似問題 ${i+1}</span>
           <div class="problem-text" style="font-size:15px">${esc(s.problem)}</div>
           ${renderVisual(s.visual)}
-          <div class="answer-box"  style="font-size:15px">答え: ${esc(s.answer)}</div>
+          <div class="answer-box"  style="font-size:15px">答え: ${formatAnswer(s.answer)}</div>
         </div>
       `).join('')}
     `;
@@ -1301,7 +1339,7 @@ function vTest() {
           </div>
           <div class="problem-text">${esc(qText)}</div>
           ${renderVisual(item.kind==='sim' ? item.s.visual : item.p.visual)}
-          <div class="answer-box">答え: ${esc(qAns)}</div>
+          <div class="answer-box">答え: ${formatAnswer(qAns)}</div>
           ${qNote ? `<div class="explanation-box">📝 ${esc(qNote)}</div>` : ''}
         </div>
         <button class="btn btn-primary" onclick="S.ses.reviewIdx++;render()">
