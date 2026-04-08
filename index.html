@@ -1597,15 +1597,22 @@ function applyCrop() {
 
   const img = new Image();
   img.onload = () => {
+    // 実解像度でのクロップ領域サイズ（iPhoneは4000px超になることがある）
+    const srcX = Math.round(x * scale);
+    const srcY = Math.round(y * scale);
+    const srcW = Math.round(w * scale);
+    const srcH = Math.round(h * scale);
+    // OCR用に1024px以内に収める（大きいとSafariのfetchが"Load failed"になる）
+    const maxPx = 1024;
+    const ratio = Math.min(1, maxPx / srcW, maxPx / srcH);
     const canvas = document.createElement('canvas');
-    canvas.width  = Math.round(w * scale);
-    canvas.height = Math.round(h * scale);
+    canvas.width  = Math.round(srcW * ratio);
+    canvas.height = Math.round(srcH * ratio);
     canvas.getContext('2d').drawImage(img,
-      Math.round(x * scale), Math.round(y * scale),
-      canvas.width, canvas.height,
+      srcX, srcY, srcW, srcH,
       0, 0, canvas.width, canvas.height
     );
-    const croppedUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const croppedUrl = canvas.toDataURL('image/jpeg', 0.85);
     finalizeCrop(croppedUrl);
   };
   // ObjectURLを使うことでHEICもブラウザがネイティブに読める
