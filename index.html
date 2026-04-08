@@ -410,7 +410,7 @@ let S = {
   history: [],   // [{ date:'YYYY-MM-DD', total:N, correct:N }]
   listTag: '',   // 一覧フィルター中の単元
   // register wizard
-  reg: { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null, multiProblems:null, multiIdx:0 },
+  reg: { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', visual:null, lastId:null, multiProblems:null, multiIdx:0 },
   // test session
   ses: { queue:[], idx:0, showAns:false, finished:false, correct:0, wrong:0 },
 };
@@ -606,13 +606,21 @@ async function ocrProblem(b64) {
     { type:'text',  text:`小学4年生の算数の問題画像です。
 ①②③や(1)(2)(3)など複数の独立した問題がある場合は、それぞれ個別に分けてください。
 各問題を読み取り、あなた自身が解いて答えを出してください。
+
+画像に図形・グラフ・表が含まれている場合は"visual"フィールドも生成してください。
+- 図形: {"type":"shape","vb":"0 0 220 200","els":[{"k":"circle","cx":80,"cy":100,"r":70},{"k":"line","x1":10,"y1":100,"x2":210,"y2":100},{"k":"dot","x":80,"y":100},{"k":"label","x":5,"y":97,"t":"ア"},{"k":"dim","x1":80,"y1":75,"x2":210,"y2":75,"t":"8cm"}]}
+  使える要素: circle(cx,cy,r), rect(x,y,w,h), line(x1,y1,x2,y2), dot(x,y), label(x,y,t=文字), dim(x1,y1,x2,y2,t=寸法)
+- 表: {"type":"table","headers":["列名",...],"rows":[["値",...],...]}
+- 棒グラフ: {"type":"bar","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
+- 折れ線グラフ: {"type":"line","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
+図・グラフ・表のない問題はvisualを省略してください。
+
 JSON形式のみで返してください（説明不要）:
-{"problems":[{"problem":"問題文（数式・条件をそのまま）","answer":"あなたが計算した答え","note":"解き方のポイント（1〜2文、小学生向け）"}]}` }
-  ]}]);
+{"problems":[{"problem":"問題文","answer":"答え","note":"解き方のポイント（1〜2文、小学生向け）","visual":{...}}]}` }
+  ]}], 2048);
   const m = txt.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('問題の読み取りに失敗しました');
   const parsed = JSON.parse(m[0]);
-  // 配列形式で返す（後方互換のため単一problemオブジェクトも対応）
   if (parsed.problems) return parsed.problems;
   return [parsed];
 }
@@ -960,6 +968,7 @@ function vRegister() {
           `).join('')}
         </div>
       </div>
+      ${r.visual ? `<div class="form-group"><div class="form-label">読み取った図・グラフ・表</div>${renderVisual(r.visual)}</div>` : ''}
       <div class="form-group">
         <label class="form-label">問題文</label>
         <textarea class="form-input" id="f-text" rows="5">${esc(r.text)}</textarea>
@@ -1029,7 +1038,7 @@ function selectTag(t) {
 }
 
 function manualEntry() {
-  S.reg = { step:2, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null, multiProblems:null, multiIdx:0 };
+  S.reg = { step:2, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', visual:null, lastId:null, multiProblems:null, multiIdx:0 };
   render();
 }
 
@@ -1039,13 +1048,14 @@ function switchMultiProblem(idx) {
   const ans  = document.getElementById('f-ans')?.value.trim();
   const note = document.getElementById('f-note')?.value.trim();
   if (S.reg.multiProblems && text !== undefined) {
-    S.reg.multiProblems[S.reg.multiIdx] = { problem: text, answer: ans || '', note: note || '' };
+    S.reg.multiProblems[S.reg.multiIdx] = { problem: text, answer: ans || '', note: note || '', visual: S.reg.visual || null };
   }
   S.reg.multiIdx = idx;
   const p = S.reg.multiProblems[idx];
   S.reg.text   = p.problem || '';
   S.reg.answer = p.answer  || '';
   S.reg.note   = p.note    || '';
+  S.reg.visual = p.visual  || null;
   render();
 }
 
@@ -1057,6 +1067,7 @@ function loadNextMultiProblem() {
   S.reg.text   = p.problem || '';
   S.reg.answer = p.answer  || '';
   S.reg.note   = p.note    || '';
+  S.reg.visual = p.visual  || null;
   S.reg.lastId = null;
   S.reg.step   = 2;
   render();
@@ -1091,6 +1102,7 @@ async function doOCR() {
     S.reg.text   = first.problem || '';
     S.reg.answer = first.answer  || '';
     S.reg.note   = first.note    || '';
+    S.reg.visual = first.visual  || null;
     S.reg.step   = 2;
     render();
   } catch(e) {
@@ -1110,6 +1122,7 @@ function saveRegister() {
   const p = {
     id: uid(), text, answer, note,
     tag: S.reg.tag || '',
+    visual: S.reg.visual || null,
     createdAt: new Date().toISOString(),
     next: null, rep:0, okCnt:0, ngCnt:0, similar:[]
   };
@@ -1150,7 +1163,7 @@ async function doGenSimilar() {
 }
 
 function resetReg() {
-  S.reg = { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null, multiProblems:null, multiIdx:0 };
+  S.reg = { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', visual:null, lastId:null, multiProblems:null, multiIdx:0 };
   render();
 }
 
@@ -1223,7 +1236,7 @@ function vTest() {
             ${qTag ? `<span class="badge badge-purple">${esc(qTag)}</span>` : ''}
           </div>
           <div class="problem-text">${esc(qText)}</div>
-          ${renderVisual(item.kind==='sim' ? item.s.visual : null)}
+          ${renderVisual(item.kind==='sim' ? item.s.visual : item.p.visual)}
           <div class="answer-box">答え: ${esc(qAns)}</div>
           ${qNote ? `<div class="explanation-box">📝 ${esc(qNote)}</div>` : ''}
         </div>
@@ -1270,7 +1283,7 @@ function vTest() {
         ${qTag ? `<span class="badge badge-purple">${esc(qTag)}</span>` : ''}
       </div>
       <div class="problem-text">${esc(qText)}</div>
-      ${renderVisual(item.kind==='sim' ? item.s.visual : null)}
+      ${renderVisual(item.kind==='sim' ? item.s.visual : item.p.visual)}
     </div>
 
     ${result === null ? `
