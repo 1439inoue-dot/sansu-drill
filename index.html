@@ -376,7 +376,7 @@ let S = {
   history: [],   // [{ date:'YYYY-MM-DD', total:N, correct:N }]
   listTag: '',   // 一覧フィルター中の単元
   // register wizard
-  reg: { step:1, file:null, text:'', answer:'', note:'', tag:'', lastId:null },
+  reg: { step:1, file:null, imgB64:null, text:'', answer:'', note:'', tag:'', lastId:null },
   // test session
   ses: { queue:[], idx:0, showAns:false, finished:false, correct:0, wrong:0 },
 };
@@ -840,15 +840,15 @@ function selectTag(t) {
 }
 
 function manualEntry() {
-  S.reg = { step:2, file:null, text:'', answer:'', note:'', tag:'', lastId:null };
+  S.reg = { step:2, file:null, imgB64:null, text:'', answer:'', note:'', tag:'', lastId:null };
   render();
 }
 
 async function doOCR() {
-  if (!S.reg.file) return;
+  if (!S.reg.imgB64) return;
   showLoading('AIが問題を読み取っています…', '数秒かかります');
   try {
-    const b64 = await compressImage(S.reg.file);
+    const b64 = S.reg.imgB64;
     const res = await ocrProblem(b64);
     S.reg.text   = res.problem || '';
     S.reg.answer = res.answer  || '';
@@ -911,7 +911,7 @@ async function doGenSimilar() {
 }
 
 function resetReg() {
-  S.reg = { step:1, file:null, text:'', answer:'', note:'', tag:'', lastId:null };
+  S.reg = { step:1, file:null, imgB64:null, text:'', answer:'', note:'', tag:'', lastId:null };
   render();
 }
 
@@ -1491,7 +1491,7 @@ function openCropModal(dataUrl, file) {
         <canvas id="crop-overlay" style="position:absolute;top:0;left:0;cursor:crosshair"></canvas>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
-        <button class="btn btn-gray" onclick="skipCrop('${encodeURIComponent(dataUrl)}')">そのまま使う</button>
+        <button class="btn btn-gray" onclick="skipCrop()">そのまま使う</button>
         <button class="btn btn-primary" onclick="applyCrop()">✂️ トリミング</button>
       </div>
     </div>
@@ -1590,18 +1590,14 @@ function applyCrop() {
   img.src = origDataUrl;
 }
 
-function skipCrop(encodedUrl) {
-  finalizeCrop(decodeURIComponent(encodedUrl));
+function skipCrop() {
+  finalizeCrop(cropState.origDataUrl);
 }
 
 function finalizeCrop(dataUrl) {
   document.getElementById('crop-modal')?.remove();
-  // DataURLをFileオブジェクトに変換
-  const arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
-  const u8 = new Uint8Array(bstr.length);
-  for (let i=0; i<bstr.length; i++) u8[i] = bstr.charCodeAt(i);
-  S.reg.file = new File([u8], 'photo.jpg', { type: mime });
+  // base64部分だけ取り出して保存（Fileオブジェクト変換不要）
+  S.reg.imgB64 = dataUrl.split(',')[1];
 
   const ph = document.getElementById('preview-ph');
   if (ph) ph.innerHTML = `<img src="${dataUrl}" alt="選択した写真">`;
