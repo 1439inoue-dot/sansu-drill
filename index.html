@@ -1486,9 +1486,9 @@ function openCropModal(dataUrl, file) {
     <div class="modal" style="border-radius:16px;max-height:94vh;padding:16px">
       <div class="modal-title">✂️ トリミング</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:10px">範囲をドラッグして選択してください</div>
-      <div style="position:relative;display:inline-block;max-width:100%;user-select:none" id="crop-wrap">
-        <img id="crop-img" src="${dataUrl}" style="max-width:100%;display:block;border-radius:8px">
-        <canvas id="crop-overlay" style="position:absolute;top:0;left:0;pointer-events:none"></canvas>
+      <div style="position:relative;display:inline-block;max-width:100%;user-select:none;touch-action:none" id="crop-wrap">
+        <img id="crop-img" src="${dataUrl}" style="max-width:100%;display:block;border-radius:8px;pointer-events:none">
+        <canvas id="crop-overlay" style="position:absolute;top:0;left:0;cursor:crosshair"></canvas>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
         <button class="btn btn-gray" onclick="skipCrop('${encodeURIComponent(dataUrl)}')">そのまま使う</button>
