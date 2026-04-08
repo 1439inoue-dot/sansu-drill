@@ -629,8 +629,15 @@ visualの形式（必ずSVG属性はシングルクォートを使用）:
 - 表: {"type":"table","caption":"タイトル(省略可)","headers":["列名",...],"rows":[["値",...],…]}
 - 棒グラフ: {"type":"bar","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
 - 折れ線グラフ: {"type":"line","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
-- 図形（円・三角形・四角形など）: {"type":"svg","svg":"<svg viewBox='0 0 200 180' width='200' height='180'>...</svg>"}
-  ※図形はSVGで描画。属性は必ずシングルクォート。ア・イ・ウなどのラベルも含める。
+- 図形（円・三角形・四角形など）: {"type":"shape","vb":"0 0 220 200","els":[要素,...]}
+  要素の種類（kで指定）:
+  circle: {"k":"circle","cx":数値,"cy":数値,"r":数値}
+  rect:   {"k":"rect","x":数値,"y":数値,"w":数値,"h":数値}
+  line:   {"k":"line","x1":数値,"y1":数値,"x2":数値,"y2":数値}
+  dot:    {"k":"dot","x":数値,"y":数値}
+  label:  {"k":"label","x":数値,"y":数値,"t":"テキスト"}
+  dim:    {"k":"dim","x1":数値,"y1":数値,"x2":数値,"y2":数値,"t":"寸法"}
+  ※ラベル（ア・イ・ウ等）・寸法（8cmなど）も必ず含めること
 
 JSON配列のみで返してください（説明不要）:
 [{"problem":"問題文","answer":"答え"},{"problem":"問題文","answer":"答え","visual":{...}}]`
@@ -706,11 +713,25 @@ function renderVisual(visual) {
         </svg>
       </div>`;
     }
-    if (visual.type === 'svg') {
-      const svg = (visual.svg || '').trim();
-      if (!svg.startsWith('<svg')) return '';
-      if (/\<script/i.test(svg)) return '';
-      return `<div class="visual-wrap">${svg}</div>`;
+    if (visual.type === 'shape') {
+      const vb  = visual.vb || '0 0 220 200';
+      const els = visual.els || [];
+      const [,,vbW,vbH] = vb.split(' ').map(Number);
+      const scale = Math.min(1, 280 / (vbW||220));
+      const W = Math.round((vbW||220)*scale), H = Math.round((vbH||200)*scale);
+      const paths = els.map(e => {
+        switch(e.k) {
+          case 'circle': return `<circle cx="${e.cx}" cy="${e.cy}" r="${e.r}" fill="none" stroke="currentColor" stroke-width="1.5"/>`;
+          case 'rect':   return `<rect x="${e.x}" y="${e.y}" width="${e.w}" height="${e.h}" fill="none" stroke="currentColor" stroke-width="1.5"/>`;
+          case 'line':   return `<line x1="${e.x1}" y1="${e.y1}" x2="${e.x2}" y2="${e.y2}" stroke="currentColor" stroke-width="1.5"/>`;
+          case 'dot':    return `<circle cx="${e.x}" cy="${e.y}" r="3" fill="currentColor"/>`;
+          case 'label':  return `<text x="${e.x}" y="${e.y}" font-size="13" fill="currentColor">${esc(String(e.t||''))}</text>`;
+          case 'dim':    return `<line x1="${e.x1}" y1="${e.y1}" x2="${e.x2}" y2="${e.y2}" stroke="var(--primary)" stroke-width="1" stroke-dasharray="4"/>
+            <text x="${((e.x1+e.x2)/2).toFixed(0)}" y="${((e.y1+e.y2)/2-5).toFixed(0)}" font-size="11" text-anchor="middle" fill="var(--primary)">${esc(String(e.t||''))}</text>`;
+          default: return '';
+        }
+      }).join('');
+      return `<div class="visual-wrap"><svg viewBox="${vb}" width="${W}" height="${H}" style="overflow:visible">${paths}</svg></div>`;
     }
   } catch(e) { return ''; }
   return '';
