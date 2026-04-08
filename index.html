@@ -410,7 +410,7 @@ let S = {
   history: [],   // [{ date:'YYYY-MM-DD', total:N, correct:N }]
   listTag: '',   // 一覧フィルター中の単元
   // register wizard
-  reg: { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null },
+  reg: { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null, multiProblems:null, multiIdx:0 },
   // test session
   ses: { queue:[], idx:0, showAns:false, finished:false, correct:0, wrong:0 },
 };
@@ -604,13 +604,17 @@ async function ocrProblem(b64) {
   const txt = await claude([{ role:'user', content:[
     { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } },
     { type:'text',  text:`小学4年生の算数の問題画像です。
-画像から問題文を読み取り、あなた自身が解いて答えを出してください。
+①②③や(1)(2)(3)など複数の独立した問題がある場合は、それぞれ個別に分けてください。
+各問題を読み取り、あなた自身が解いて答えを出してください。
 JSON形式のみで返してください（説明不要）:
-{"problem":"問題文（数式・条件をそのまま）","answer":"あなたが計算した答え","note":"解き方のポイント（1〜2文、小学生向け）"}` }
+{"problems":[{"problem":"問題文（数式・条件をそのまま）","answer":"あなたが計算した答え","note":"解き方のポイント（1〜2文、小学生向け）"}]}` }
   ]}]);
   const m = txt.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('問題の読み取りに失敗しました');
-  return JSON.parse(m[0]);
+  const parsed = JSON.parse(m[0]);
+  // 配列形式で返す（後方互換のため単一problemオブジェクトも対応）
+  if (parsed.problems) return parsed.problems;
+  return [parsed];
 }
 
 async function genSimilar(text, answer, count=3) {
@@ -892,11 +896,23 @@ function vRegister() {
     <button class="btn btn-outline" onclick="manualEntry()">✏️ 手入力で登録する</button>
   `;
 
-  if (r.step === 2) return `
+  if (r.step === 2) {
+  const isMulti = r.multiProblems && r.multiProblems.length > 1;
+  const multiTotal = isMulti ? r.multiProblems.length : 1;
+  const mIdx = r.multiIdx || 0;
+  return `
     <div class="section-title">📝 内容を確認・修正してください</div>
     <div class="steps">
       <div class="step done"></div><div class="step active"></div><div class="step"></div>
     </div>
+    ${isMulti ? `
+      <div class="alert alert-info" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>📋 ${multiTotal}問を検出（${mIdx+1} / ${multiTotal}問目）</span>
+        <div style="display:flex;gap:6px">
+          ${mIdx > 0 ? `<button class="btn btn-gray btn-sm" onclick="switchMultiProblem(${mIdx-1})">← 前</button>` : ''}
+          ${mIdx < multiTotal-1 ? `<button class="btn btn-outline btn-sm" onclick="switchMultiProblem(${mIdx+1})">次 →</button>` : ''}
+        </div>
+      </div>` : ''}
     <div class="card">
       <div class="form-group">
         <label class="form-label">単元タグ</label>
@@ -922,19 +938,29 @@ function vRegister() {
     </div>
     <button class="btn btn-primary" onclick="saveRegister()">✅ この内容で登録する</button>
     <button class="btn btn-gray" style="margin-top:8px" onclick="S.reg.step=1;render()">← 戻る</button>
-  `;
+  `;}  // end step===2
 
-  if (r.step === 3) return `
+  if (r.step === 3) {
+  const nextIdx = (r.multiIdx || 0) + 1;
+  const hasMore = r.multiProblems && nextIdx < r.multiProblems.length;
+  return `
     <div class="section-title">✅ 登録完了！</div>
     <div class="steps">
       <div class="step done"></div><div class="step done"></div><div class="step active"></div>
     </div>
-    <div class="alert alert-success">問題を登録しました。明日から復習テストに出題されます。</div>
+    <div class="alert alert-success">
+      問題を登録しました。明日から復習テストに出題されます。
+      ${r.multiProblems ? `（${r.multiIdx+1} / ${r.multiProblems.length}問目）` : ''}
+    </div>
     <div class="card">
       ${r.tag ? `<span class="badge badge-purple" style="margin-bottom:8px">${esc(r.tag)}</span>` : ''}
       <div class="problem-text">${esc(r.text)}</div>
       <div class="answer-box">答え: ${esc(r.answer)}</div>
     </div>
+    ${hasMore ? `
+      <button class="btn btn-primary" style="margin-top:4px" onclick="loadNextMultiProblem()">
+        次の問題へ（${nextIdx+1} / ${r.multiProblems.length}問目）→
+      </button>` : ''}
     <div id="sim-area">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         <label class="form-label" style="margin:0;white-space:nowrap">生成する問題数:</label>
@@ -953,7 +979,7 @@ function vRegister() {
     </div>
     <button class="btn btn-primary" style="margin-top:12px" onclick="resetReg()">📸 続けて別の問題を登録する</button>
     <button class="btn btn-gray"    style="margin-top:8px"  onclick="go('home')">🏠 ホームに戻る</button>
-  `;
+  `;}  // end step===3
 
   return '';
 }
@@ -966,7 +992,36 @@ function selectTag(t) {
 }
 
 function manualEntry() {
-  S.reg = { step:2, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null };
+  S.reg = { step:2, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null, multiProblems:null, multiIdx:0 };
+  render();
+}
+
+function switchMultiProblem(idx) {
+  // 現在の編集内容をmultiProblemsに保存
+  const text = document.getElementById('f-text')?.value.trim();
+  const ans  = document.getElementById('f-ans')?.value.trim();
+  const note = document.getElementById('f-note')?.value.trim();
+  if (S.reg.multiProblems && text !== undefined) {
+    S.reg.multiProblems[S.reg.multiIdx] = { problem: text, answer: ans || '', note: note || '' };
+  }
+  S.reg.multiIdx = idx;
+  const p = S.reg.multiProblems[idx];
+  S.reg.text   = p.problem || '';
+  S.reg.answer = p.answer  || '';
+  S.reg.note   = p.note    || '';
+  render();
+}
+
+function loadNextMultiProblem() {
+  const nextIdx = (S.reg.multiIdx || 0) + 1;
+  if (!S.reg.multiProblems || nextIdx >= S.reg.multiProblems.length) return;
+  S.reg.multiIdx = nextIdx;
+  const p = S.reg.multiProblems[nextIdx];
+  S.reg.text   = p.problem || '';
+  S.reg.answer = p.answer  || '';
+  S.reg.note   = p.note    || '';
+  S.reg.lastId = null;
+  S.reg.step   = 2;
   render();
 }
 
@@ -992,10 +1047,13 @@ async function doOCR() {
   showLoading('AIが問題を読み取っています…', '数秒かかります');
   try {
     const b64 = await compressDataUrl(S.reg.imgDataUrl);
-    const res = await ocrProblem(b64);
-    S.reg.text   = res.problem || '';
-    S.reg.answer = res.answer  || '';
-    S.reg.note   = res.note    || '';
+    const problems = await ocrProblem(b64);
+    S.reg.multiProblems = problems.length > 1 ? problems : null;
+    S.reg.multiIdx = 0;
+    const first = problems[0] || {};
+    S.reg.text   = first.problem || '';
+    S.reg.answer = first.answer  || '';
+    S.reg.note   = first.note    || '';
     S.reg.step   = 2;
     render();
   } catch(e) {
@@ -1055,7 +1113,7 @@ async function doGenSimilar() {
 }
 
 function resetReg() {
-  S.reg = { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null };
+  S.reg = { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', lastId:null, multiProblems:null, multiIdx:0 };
   render();
 }
 
