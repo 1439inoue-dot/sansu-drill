@@ -729,33 +729,38 @@ function autoFixCircles(visual) {
     sml.cx = big.cx - (big.r - sml.r);
     sml.cy = big.cy;
     const cy = big.cy;
-    // 2. 直径上の4つの重要なx座標を計算
-    //    ア=大円左端, イ=小円中心, ウ=大円中心, エ=大円右端
-    const xA = big.cx - big.r;  // ア（左端）
-    const xI = sml.cx;           // イ（小円中心）
-    const xU = big.cx;           // ウ（大円中心）
-    const xE = big.cx + big.r;   // エ（右端）
-    const keyXs = [xA, xI, xU, xE];
-    // 3. 直線を大円の直径に合わせる
-    const line = els.find(e => e.k === 'line');
-    if (line) { line.x1 = xA; line.x2 = xE; line.y1 = cy; line.y2 = cy; }
-    // 4. 点(dot)をx順にソートし、4つの重要座標にスナップ
+    const xLeft  = big.cx - big.r;        // 大円左端（ア）
+    const xSml   = sml.cx;                // 小円中心（イ）
+    const xBig   = big.cx;                // 大円中心（ウ）
+    const xRight = big.cx + big.r;        // 大円右端（エ）
+    // 点数に応じてキー座標を決定（4点: ア・イ・ウ・エ、5点: ア・イ・ウ・カ・エ など）
     const dots = els.filter(e => e.k === 'dot');
     dots.sort((a, b) => a.x - b.x);
+    let keyXs;
+    if (dots.length <= 4) {
+      keyXs = [xLeft, xSml, xBig, xRight];
+    } else {
+      // 5点の場合: 小円右端を追加（イウの中間 = 小円の右端 = sml.cx + sml.r）
+      const xSmlRight = sml.cx + sml.r;
+      keyXs = [xLeft, xSml, xBig, xSmlRight, xRight];
+    }
+    // 直線を大円の直径に合わせる
+    const line = els.find(e => e.k === 'line');
+    if (line) { line.x1 = xLeft; line.x2 = xRight; line.y1 = cy; line.y2 = cy; }
+    // 点(dot)をx順にスナップ
     dots.forEach((d, i) => { d.x = keyXs[i] ?? d.x; d.y = cy; });
-    // 5. ラベル(label)もx順にソートし、対応する点の近くに配置
+    // ラベル(label)もx順にソートし対応する点の近くに配置
     const labels = els.filter(e => e.k === 'label');
     labels.sort((a, b) => a.x - b.x);
     labels.forEach((lbl, i) => {
       const tx = keyXs[i] ?? lbl.x;
-      // 両端(ア・エ)は横に、中間(イ・ウ)は少し下に
       if (i === 0)                    { lbl.x = tx - 14; lbl.y = cy + 4; }
       else if (i === labels.length-1) { lbl.x = tx + 4;  lbl.y = cy + 4; }
       else                            { lbl.x = tx - 6;  lbl.y = cy + 16; }
     });
-    // 6. 寸法線(dim)を大円中心〜右端（=半径）の位置に
+    // 寸法線(dim)を大円中心〜右端（=半径8cm）の位置に
     els.filter(e => e.k === 'dim').forEach(d => {
-      d.x1 = xU; d.x2 = xE; d.y1 = cy - 22; d.y2 = cy - 22;
+      d.x1 = xBig; d.x2 = xRight; d.y1 = cy - 22; d.y2 = cy - 22;
     });
   }
   return { ...visual, els };
