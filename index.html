@@ -618,33 +618,48 @@ JSON形式のみで返してください（説明不要）:
 }
 
 async function genSimilar(text, answer, count=3) {
+  // 元の問題に図形・グラフ・表が必要か検出
+  const hasFigure = /図|円|三角|四角|直線|点[ア-ン]|半径|直径|辺|角/.test(text);
+  const hasGraph  = /グラフ|棒グラフ|折れ線/.test(text);
+  const hasTable  = /表|まとめ/.test(text);
+  const visualRequired = hasFigure || hasGraph || hasTable;
+
+  const visualRule = visualRequired
+    ? `【必須】元の問題には${hasFigure?'図形':hasGraph?'グラフ':'表'}が含まれています。全${count}問に必ず"visual"フィールドを含めてください。`
+    : `表・グラフ・図形が必要な問題のみ"visual"フィールドを追加してください。不要な問題には含めないでください。`;
+
   const txt = await claude([{ role:'user', content:
     `小学4年生算数。同じ単元・難易度で数値だけ変えた類似問題を${count}問作ってください。
 元の問題: ${text}
 答え: ${answer}
 
-【重要】表・グラフ・図形が問題を解くために絶対必要な場合のみ"visual"フィールドを追加してください。文章だけで解ける問題にはvisualは不要です。
+${visualRule}
 
-visualの形式（必ずSVG属性はシングルクォートを使用）:
-- 表: {"type":"table","caption":"タイトル(省略可)","headers":["列名",...],"rows":[["値",...],…]}
+visualの形式:
+- 表: {"type":"table","caption":"タイトル","headers":["列名",...],"rows":[["値",...],…]}
 - 棒グラフ: {"type":"bar","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
 - 折れ線グラフ: {"type":"line","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
-- 図形（円・三角形・四角形など）: {"type":"shape","vb":"0 0 220 200","els":[要素,...]}
-  要素の種類（kで指定）:
-  circle: {"k":"circle","cx":数値,"cy":数値,"r":数値}
-  rect:   {"k":"rect","x":数値,"y":数値,"w":数値,"h":数値}
-  line:   {"k":"line","x1":数値,"y1":数値,"x2":数値,"y2":数値}
-  dot:    {"k":"dot","x":数値,"y":数値}
-  label:  {"k":"label","x":数値,"y":数値,"t":"テキスト"}
-  dim:    {"k":"dim","x1":数値,"y1":数値,"x2":数値,"y2":数値,"t":"寸法"}
-  ※ラベル（ア・イ・ウ等）・寸法（8cmなど）も必ず含めること
+- 図形: {"type":"shape","vb":"0 0 220 200","els":[
+    {"k":"circle","cx":80,"cy":100,"r":70},
+    {"k":"line","x1":10,"y1":100,"x2":210,"y2":100},
+    {"k":"dot","x":80,"y":100},
+    {"k":"label","x":5,"y":97,"t":"ア"},
+    {"k":"dim","x1":80,"y1":75,"x2":210,"y2":75,"t":"8cm"}
+  ]}
+  使える要素: circle(cx,cy,r), rect(x,y,w,h), line(x1,y1,x2,y2), dot(x,y), label(x,y,t), dim(x1,y1,x2,y2,t)
 
 JSON配列のみで返してください（説明不要）:
-[{"problem":"問題文","answer":"答え"},{"problem":"問題文","answer":"答え","visual":{...}}]`
+[{"problem":"問題文","answer":"答え","visual":{...}}]`
   }]);
+  console.log('genSimilar response:', txt);
   const m = txt.match(/\[[\s\S]*\]/);
   if (!m) throw new Error('類似問題の生成に失敗しました');
-  return JSON.parse(m[0]);
+  try {
+    return JSON.parse(m[0]);
+  } catch(e) {
+    console.error('JSON parse error:', e.message, '\nraw:', m[0].substring(0,200));
+    throw new Error('JSON解析エラー（図形データの形式が不正）: ' + e.message);
+  }
 }
 
 function renderVisual(visual) {
