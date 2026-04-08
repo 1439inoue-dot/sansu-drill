@@ -642,57 +642,47 @@ JSON形式のみで返してください（説明不要）:
   return [parsed];
 }
 
-async function genSimilar(text, answer, count=3) {
-  // 元の問題に図形・グラフ・表が必要か検出
-  const hasFigure = /図|円|三角|四角|直線|点[ア-ン]|半径|直径|辺|角/.test(text);
+async function genSimilar(text, answer, count=3, originalVisual=null) {
+  // 図形(shape)は元のvisualをそのまま流用 → AIに座標生成させない（精度問題を回避・コスト削減）
+  const hasOriginalShape = originalVisual && originalVisual.type === 'shape';
   const hasGraph  = /グラフ|棒グラフ|折れ線/.test(text);
   const hasTable  = /表|まとめ/.test(text);
-  const visualRequired = hasFigure || hasGraph || hasTable;
 
-  const visualRule = visualRequired
-    ? `【必須】元の問題には${hasFigure?'図形':hasGraph?'グラフ':'表'}が含まれています。全${count}問に必ず"visual"フィールドを含めてください。`
-    : `表・グラフ・図形が必要な問題のみ"visual"フィールドを追加してください。不要な問題には含めないでください。`;
+  // 表・グラフは数値が変わるのでAIに生成してもらう。図形はコピーするため不要。
+  let visualInstruction = '';
+  if (originalVisual && originalVisual.type === 'table') {
+    visualInstruction = `\n各問題に以下の表の数値だけ変えたvisualを含めてください: ${JSON.stringify(originalVisual)}\n形式: {"type":"table","caption":"...","headers":[...],"rows":[[...],...]}`;
+  } else if (originalVisual && (originalVisual.type === 'bar' || originalVisual.type === 'line')) {
+    visualInstruction = `\n各問題に以下のグラフの数値だけ変えたvisualを含めてください: ${JSON.stringify(originalVisual)}\n形式: {"type":"${originalVisual.type}","title":"...","labels":[...],"values":[...],"unit":"..."}`;
+  } else if (!originalVisual && (hasGraph || hasTable)) {
+    visualInstruction = `\n表・グラフが必要な問題にはvisualを追加してください。\n- 表: {"type":"table","caption":"タイトル","headers":[...],"rows":[[...],...] }\n- 棒グラフ: {"type":"bar","title":"タイトル","labels":[...],"values":[...],"unit":"単位"}\n- 折れ線グラフ: {"type":"line","title":"タイトル","labels":[...],"values":[...],"unit":"単位"}`;
+  }
 
-  // 図形データを含む可能性があるため max_tokens を 4096 に増やす
+  const needsVisualField = visualInstruction !== '';
   const txt = await claude([{ role:'user', content:
     `小学4年生算数。同じ単元・難易度で数値だけ変えた類似問題を${count}問作ってください。
 元の問題: ${text}
 答え: ${answer}
-
-${visualRule}
-
-visualの形式:
-- 表: {"type":"table","caption":"タイトル","headers":["列名",...],"rows":[["値",...],…]}
-- 棒グラフ: {"type":"bar","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
-- 折れ線グラフ: {"type":"line","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
-- 図形（★必ず元の問題の位置関係を正確に再現すること）:
-  ★ 2円の関係ルール:
-    内接（小円が大円の内側）→ 中心間距離 = 大円半径 - 小円半径
-    例) 大円r=95,cx=145・小円r=45,cx=95: |145-95|=50=95-45 → 小円が大円内に完全収容
-  {"type":"shape","vb":"0 0 260 210","els":[
-    {"k":"circle","cx":145,"cy":105,"r":95},
-    {"k":"circle","cx":95,"cy":105,"r":45},
-    {"k":"line","x1":50,"y1":105,"x2":240,"y2":105},
-    {"k":"dot","x":50,"y":105},{"k":"label","x":38,"y":102,"t":"ア"},
-    {"k":"dot","x":95,"y":105},{"k":"label","x":85,"y":120,"t":"イ"},
-    {"k":"dot","x":145,"y":105},{"k":"label","x":135,"y":120,"t":"ウ"},
-    {"k":"dot","x":240,"y":105},{"k":"label","x":232,"y":102,"t":"エ"},
-    {"k":"dim","x1":145,"y1":78,"x2":240,"y2":78,"t":"8cm"}
-  ]}
-  使える要素: circle(cx,cy,r), rect(x,y,w,h), line(x1,y1,x2,y2), dot(x,y), label(x,y,t), dim(x1,y1,x2,y2,t)
+${visualInstruction}
 
 JSON配列のみで返してください（説明不要）:
-[{"problem":"問題文","answer":"答え","visual":{...}}]`
-  }], 4096);
+[{"problem":"問題文","answer":"答え"${needsVisualField ? ',"visual":{...}' : ''}}]`
+  }], needsVisualField ? 3000 : 1024);
   console.log('genSimilar response:', txt);
   const m = txt.match(/\[[\s\S]*\]/);
   if (!m) throw new Error('類似問題の生成に失敗しました');
+  let sims;
   try {
-    return JSON.parse(m[0]);
+    sims = JSON.parse(m[0]);
   } catch(e) {
     console.error('JSON parse error:', e.message, '\nraw:', m[0].substring(0,200));
-    throw new Error('JSON解析エラー（図形データの形式が不正）: ' + e.message);
+    throw new Error('JSON解析エラー: ' + e.message);
   }
+  // 図形は元のvisualをそのまま全問に付与
+  if (hasOriginalShape) {
+    sims = sims.map(s => ({ ...s, visual: originalVisual }));
+  }
+  return sims;
 }
 
 function renderVisual(visual) {
@@ -1163,8 +1153,8 @@ async function doGenSimilar() {
   const btn = document.getElementById('sim-btn');
   if (btn) { btn.disabled=true; btn.textContent='🤖 生成中…'; }
   try {
-    const sims = await genSimilar(S.reg.text, S.reg.answer, count);
     const p = S.problems.find(x=>x.id===S.reg.lastId);
+    const sims = await genSimilar(S.reg.text, S.reg.answer, count, S.reg.visual || (p && p.visual) || null);
     if (p) { p.similar = [...(p.similar||[]), ...sims]; save(); }
 
     document.getElementById('sim-area').innerHTML = `
@@ -1203,7 +1193,7 @@ async function startTest() {
     showLoading('類似問題を自動生成しています…', `${needsSimilar.length}問分（数秒かかります）`);
     for (const p of needsSimilar) {
       try {
-        p.similar = await genSimilar(p.text, p.answer, 3);
+        p.similar = await genSimilar(p.text, p.answer, 3, p.visual || null);
       } catch(e) {
         // 生成失敗時は元の問題をそのまま出題
       }
@@ -1564,7 +1554,7 @@ async function doSimModal(id, btn) {
   btn.disabled = true; btn.textContent = '生成中…';
   const resultEl = document.getElementById('modal-sim-result');
   try {
-    const sims = await genSimilar(p.text, p.answer, count);
+    const sims = await genSimilar(p.text, p.answer, count, p.visual || null);
     p.similar = [...(p.similar||[]), ...sims];
     save();
     resultEl.innerHTML = `
