@@ -1491,10 +1491,14 @@ function bindEvents() {
 }
 
 // ── Crop Modal ────────────────────────────────────────────────
-let cropState = { startX:0, startY:0, endX:0, endY:0, dragging:false, imgW:0, imgH:0, scale:1, origDataUrl:'' };
+let cropState = { startX:0, startY:0, endX:0, endY:0, dragging:false, imgW:0, imgH:0, scale:1, origDataUrl:'', file:null, origObjUrl:null };
 
 function openCropModal(dataUrl, file) {
   cropState.origDataUrl = dataUrl;
+  cropState.file = file;
+  // createObjectURLを使いHEICなどもブラウザネイティブで表示・描画
+  const objUrl = URL.createObjectURL(file);
+  cropState.origObjUrl = objUrl;
   const el = document.createElement('div');
   el.className = 'modal-overlay';
   el.id = 'crop-modal';
@@ -1504,7 +1508,7 @@ function openCropModal(dataUrl, file) {
       <div class="modal-title">✂️ トリミング</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:10px">範囲をドラッグして選択してください</div>
       <div style="position:relative;display:inline-block;max-width:100%;user-select:none;touch-action:none" id="crop-wrap">
-        <img id="crop-img" src="${dataUrl}" style="max-width:100%;display:block;border-radius:8px;pointer-events:none">
+        <img id="crop-img" src="${objUrl}" style="max-width:100%;display:block;border-radius:8px;pointer-events:none">
         <canvas id="crop-overlay" style="position:absolute;top:0;left:0;cursor:crosshair"></canvas>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
@@ -1582,7 +1586,7 @@ function drawCropBox() {
 }
 
 function applyCrop() {
-  const { startX, startY, endX, endY, scale, origDataUrl } = cropState;
+  const { startX, startY, endX, endY, scale, origObjUrl, origDataUrl } = cropState;
   const x = Math.min(startX, endX), y = Math.min(startY, endY);
   const w = Math.abs(endX - startX), h = Math.abs(endY - startY);
 
@@ -1604,16 +1608,24 @@ function applyCrop() {
     const croppedUrl = canvas.toDataURL('image/jpeg', 0.92);
     finalizeCrop(croppedUrl);
   };
-  img.src = origDataUrl;
+  // ObjectURLを使うことでHEICもブラウザがネイティブに読める
+  img.src = origObjUrl || origDataUrl;
 }
 
 function skipCrop() {
-  finalizeCrop(cropState.origDataUrl);
+  if (cropState.file) {
+    // compressImageはcreateObjectURLを使うのでHEICも確実にJPEGへ変換できる
+    compressImage(cropState.file).then(b64 => {
+      finalizeCrop(b64 ? 'data:image/jpeg;base64,' + b64 : cropState.origDataUrl);
+    });
+  } else {
+    finalizeCrop(cropState.origDataUrl);
+  }
 }
 
 function finalizeCrop(dataUrl) {
   document.getElementById('crop-modal')?.remove();
-  // MIMEタイプごとdataUrlを保存（HEIC等の形式対応）
+  if (cropState.origObjUrl) { URL.revokeObjectURL(cropState.origObjUrl); cropState.origObjUrl = null; }
   S.reg.imgDataUrl = dataUrl;
 
   const ph = document.getElementById('preview-ph');
