@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>算数復習ドリル</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1421,6 +1423,12 @@ function vSettings() {
       <div class="section-title">📦 データ管理</div>
       <button class="btn btn-danger btn-sm" onclick="clearAll()">全データ削除</button>
     </div>
+
+    <div class="card">
+      <div class="section-title">🔧 診断</div>
+      <button class="btn btn-outline btn-sm" onclick="testApi()">API接続テスト</button>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">バージョン: v20260408-xhr</div>
+    </div>
   `;
 }
 
@@ -1428,6 +1436,16 @@ function saveSettings() {
   S.settings.apiKey = document.getElementById('key-in').value.trim();
   save();
   alert('保存しました！');
+}
+
+async function testApi() {
+  if (!S.settings.apiKey) { alert('先にAPIキーを保存してください'); return; }
+  try {
+    const txt = await claude([{ role:'user', content:'「OK」とだけ返してください' }]);
+    alert('✅ API接続OK！\n返答: ' + txt);
+  } catch(e) {
+    alert('❌ APIエラー: ' + e.message);
+  }
 }
 
 async function saveCloudSettings() {
