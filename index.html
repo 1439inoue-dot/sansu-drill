@@ -722,10 +722,11 @@ function autoFixCircles(visual) {
   if (circles.length !== 2) return { ...visual, els };
   circles.sort((a, b) => b.r - a.r);
   const [big, sml] = circles;
-  const dist = Math.sqrt((big.cx - sml.cx)**2 + (big.cy - sml.cy)**2);
-  // 小円が大円の外にはみ出している → 内接（左側で接する）に修正
-  if (dist + sml.r > big.r) {
-    // 1. 小円の中心を正しい位置に
+  // 常に左内接に統一（条件チェックなし）
+  // 理由: AIは右内接・重なりなど様々な座標を生成するが、
+  //       この問題タイプは必ず「左内接（ア側）」のため無条件で修正
+  {
+    // 1. 小円の中心を正しい位置に（左内接）
     sml.cx = big.cx - (big.r - sml.r);
     sml.cy = big.cy;
     const cy = big.cy;
