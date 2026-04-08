@@ -210,6 +210,37 @@ textarea.form-input { resize: vertical; min-height: 90px; line-height: 1.6; }
   color: #78350f;
   margin: 10px 0;
 }
+.visual-wrap {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 10px 0;
+  overflow-x: auto;
+  text-align: center;
+}
+.visual-caption {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.visual-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 0 auto;
+}
+.visual-table th {
+  background: var(--primary);
+  color: white;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+}
+.visual-table td {
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  text-align: center;
+}
 .progress-bar-wrap {
   height: 6px;
   background: var(--border);
@@ -583,19 +614,94 @@ JSON形式のみで返してください（説明不要）:
 }
 
 async function genSimilar(text, answer, count=3) {
-  const example = Array.from({length:count}, (_,i)=>
-    `{"problem":"問題文${i+1}","answer":"答え${i+1}"}`).join(',');
   const txt = await claude([{ role:'user', content:
-    `小学4年生算数。同じ単元・難易度で数値だけ変えた類似問題を${count}問。
+    `小学4年生算数。同じ単元・難易度で数値だけ変えた類似問題を${count}問作ってください。
 元の問題: ${text}
 答え: ${answer}
 
+【重要】表・棒グラフ・折れ線グラフが問題を解くために絶対必要な場合のみ"visual"フィールドを追加してください。文章だけで解ける問題にはvisualは不要です。
+
+visualの形式:
+- 表: {"type":"table","caption":"タイトル(省略可)","headers":["列名",...],"rows":[["値",...],…]}
+- 棒グラフ: {"type":"bar","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
+- 折れ線グラフ: {"type":"line","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
+
 JSON配列のみで返してください（説明不要）:
-[${example}]`
+[{"problem":"問題文","answer":"答え"},{"problem":"問題文","answer":"答え","visual":{...}}]`
   }]);
   const m = txt.match(/\[[\s\S]*\]/);
   if (!m) throw new Error('類似問題の生成に失敗しました');
   return JSON.parse(m[0]);
+}
+
+function renderVisual(visual) {
+  if (!visual || !visual.type) return '';
+  try {
+    if (visual.type === 'table') {
+      const headers = visual.headers || [];
+      const rows    = visual.rows    || [];
+      const caption = visual.caption || visual.title || '';
+      return `<div class="visual-wrap">
+        ${caption ? `<div class="visual-caption">${esc(caption)}</div>` : ''}
+        <table class="visual-table">
+          ${headers.length ? `<tr>${headers.map(h=>`<th>${esc(String(h))}</th>`).join('')}</tr>` : ''}
+          ${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(String(c))}</td>`).join('')}</tr>`).join('')}
+        </table>
+      </div>`;
+    }
+    if (visual.type === 'bar') {
+      const labels = visual.labels || [];
+      const values = visual.values || [];
+      const title  = visual.title  || '';
+      const unit   = visual.unit   || '';
+      const maxV   = Math.max(...values, 1);
+      const bW = Math.min(44, Math.floor(260 / Math.max(labels.length, 1)) - 6);
+      const bH = 100;
+      const totalW = labels.length * (bW + 8) + 8;
+      const bars = labels.map((label, i) => {
+        const h = Math.round((values[i]||0) / maxV * bH);
+        const x = 8 + i * (bW + 8);
+        return `<rect x="${x}" y="${bH-h+16}" width="${bW}" height="${h}" fill="var(--primary)" rx="3"/>
+          <text x="${x+bW/2}" y="${bH+30}" text-anchor="middle" font-size="10" fill="currentColor">${esc(String(label))}</text>
+          <text x="${x+bW/2}" y="${bH-h+12}" text-anchor="middle" font-size="9" fill="var(--primary)">${values[i]}${unit}</text>`;
+      }).join('');
+      return `<div class="visual-wrap">
+        ${title ? `<div class="visual-caption">${esc(title)}</div>` : ''}
+        <svg width="${totalW}" height="${bH+38}" style="overflow:visible">
+          ${bars}
+          <line x1="0" y1="${bH+16}" x2="${totalW}" y2="${bH+16}" stroke="var(--border)" stroke-width="1.5"/>
+        </svg>
+      </div>`;
+    }
+    if (visual.type === 'line') {
+      const labels = visual.labels || [];
+      const values = visual.values || [];
+      const title  = visual.title  || '';
+      const unit   = visual.unit   || '';
+      const maxV   = Math.max(...values, 1);
+      const minV   = Math.min(...values, 0);
+      const range  = maxV - minV || 1;
+      const W = 260, cH = 90, padL = 24, padB = 24;
+      const pts = values.map((v, i) => ({
+        x: padL + i * ((W - padL) / Math.max(labels.length - 1, 1)),
+        y: cH - Math.round((v - minV) / range * (cH - 20)) - 4,
+        v, label: labels[i]
+      }));
+      const polyline = pts.map(p=>`${p.x},${p.y}`).join(' ');
+      return `<div class="visual-wrap">
+        ${title ? `<div class="visual-caption">${esc(title)}</div>` : ''}
+        <svg width="${W}" height="${cH+padB}" style="overflow:visible">
+          <polyline points="${polyline}" fill="none" stroke="var(--primary)" stroke-width="2"/>
+          ${pts.map(p=>`
+            <circle cx="${p.x}" cy="${p.y}" r="4" fill="var(--primary)"/>
+            <text x="${p.x}" y="${p.y-8}" text-anchor="middle" font-size="9" fill="var(--primary)">${p.v}${unit}</text>
+            <text x="${p.x}" y="${cH+padB-2}" text-anchor="middle" font-size="9" fill="currentColor">${esc(String(p.label))}</text>
+          `).join('')}
+        </svg>
+      </div>`;
+    }
+  } catch(e) { return ''; }
+  return '';
 }
 
 // ================================================================
@@ -927,6 +1033,7 @@ async function doGenSimilar() {
         <div class="card">
           <span class="badge badge-blue" style="margin-bottom:8px">類似問題 ${i+1}</span>
           <div class="problem-text" style="font-size:15px">${esc(s.problem)}</div>
+          ${renderVisual(s.visual)}
           <div class="answer-box"  style="font-size:15px">答え: ${esc(s.answer)}</div>
         </div>
       `).join('')}
@@ -1013,6 +1120,7 @@ function vTest() {
             ${qTag ? `<span class="badge badge-purple">${esc(qTag)}</span>` : ''}
           </div>
           <div class="problem-text">${esc(qText)}</div>
+          ${renderVisual(item.kind==='sim' ? item.s.visual : null)}
           <div class="answer-box">答え: ${esc(qAns)}</div>
           ${qNote ? `<div class="explanation-box">📝 ${esc(qNote)}</div>` : ''}
         </div>
@@ -1059,6 +1167,7 @@ function vTest() {
         ${qTag ? `<span class="badge badge-purple">${esc(qTag)}</span>` : ''}
       </div>
       <div class="problem-text">${esc(qText)}</div>
+      ${renderVisual(item.kind==='sim' ? item.s.visual : null)}
     </div>
 
     ${result === null ? `
