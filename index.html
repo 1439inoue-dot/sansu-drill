@@ -685,8 +685,40 @@ JSON配列のみで返してください（説明不要）:
   return sims;
 }
 
+// 2つの円が「重なり」になっている場合を自動修正（片方が内側に収まるべきとき）
+function autoFixCircles(visual) {
+  if (!visual || visual.type !== 'shape') return visual;
+  const els = JSON.parse(JSON.stringify(visual.els || []));
+  const circles = els.filter(e => e.k === 'circle');
+  if (circles.length !== 2) return { ...visual, els };
+  circles.sort((a, b) => b.r - a.r);
+  const [big, sml] = circles;
+  const dist = Math.sqrt((big.cx - sml.cx)**2 + (big.cy - sml.cy)**2);
+  // 小円が大円の外にはみ出している → 内接（左側で接する）に修正
+  if (dist + sml.r > big.r) {
+    sml.cx = big.cx - (big.r - sml.r);
+    sml.cy = big.cy;
+    // 直線を大円の直径に合わせる
+    const line = els.find(e => e.k === 'line');
+    if (line) {
+      line.x1 = big.cx - big.r; line.x2 = big.cx + big.r;
+      line.y1 = big.cy;         line.y2 = big.cy;
+    }
+    // 点(dot)を直線上に整列
+    const dotsOnLine = els.filter(e => e.k === 'dot');
+    dotsOnLine.forEach(d => { d.y = big.cy; });
+    // 寸法線(dim)を少し上にずらす
+    els.filter(e => e.k === 'dim').forEach(d => {
+      d.y1 = big.cy - 22; d.y2 = big.cy - 22;
+    });
+  }
+  return { ...visual, els };
+}
+
 function renderVisual(visual) {
   if (!visual || !visual.type) return '';
+  // 図形の自動修正を適用
+  if (visual.type === 'shape') visual = autoFixCircles(visual);
   try {
     if (visual.type === 'table') {
       const headers = visual.headers || [];
