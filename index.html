@@ -619,12 +619,14 @@ async function genSimilar(text, answer, count=3) {
 元の問題: ${text}
 答え: ${answer}
 
-【重要】表・棒グラフ・折れ線グラフが問題を解くために絶対必要な場合のみ"visual"フィールドを追加してください。文章だけで解ける問題にはvisualは不要です。
+【重要】表・グラフ・図形が問題を解くために絶対必要な場合のみ"visual"フィールドを追加してください。文章だけで解ける問題にはvisualは不要です。
 
-visualの形式:
+visualの形式（必ずSVG属性はシングルクォートを使用）:
 - 表: {"type":"table","caption":"タイトル(省略可)","headers":["列名",...],"rows":[["値",...],…]}
 - 棒グラフ: {"type":"bar","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
 - 折れ線グラフ: {"type":"line","title":"タイトル","labels":["項目",...],"values":[数値,...],"unit":"単位"}
+- 図形（円・三角形・四角形など）: {"type":"svg","svg":"<svg viewBox='0 0 200 180' width='200' height='180'>...</svg>"}
+  ※図形はSVGで描画。属性は必ずシングルクォート。ア・イ・ウなどのラベルも含める。
 
 JSON配列のみで返してください（説明不要）:
 [{"problem":"問題文","answer":"答え"},{"problem":"問題文","answer":"答え","visual":{...}}]`
@@ -699,6 +701,12 @@ function renderVisual(visual) {
           `).join('')}
         </svg>
       </div>`;
+    }
+    if (visual.type === 'svg') {
+      const svg = (visual.svg || '').trim();
+      if (!svg.startsWith('<svg')) return '';
+      if (/\<script/i.test(svg)) return '';
+      return `<div class="visual-wrap">${svg}</div>`;
     }
   } catch(e) { return ''; }
   return '';
