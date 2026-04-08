@@ -571,7 +571,7 @@ function compressImage(file, maxPx=1024, quality=0.82) {
 // ================================================================
 //  CLAUDE API
 // ================================================================
-async function claude(messages) {
+async function claude(messages, maxTokens=1024) {
   if (!S.settings.apiKey) throw new Error('APIキーが設定されていません（設定画面で入力してください）');
   if (!S.settings.proxyUrl) throw new Error('プロキシURLが設定されていません（設定画面で入力してください）');
   return new Promise((resolve, reject) => {
@@ -596,7 +596,7 @@ async function claude(messages) {
     };
     xhr.onerror = () => reject(new Error('ネットワークエラー（インターネット接続を確認してください）'));
     xhr.ontimeout = () => reject(new Error('タイムアウト（時間がかかりすぎています）'));
-    xhr.send(JSON.stringify({ model: S.settings.model, max_tokens: 1024, messages }));
+    xhr.send(JSON.stringify({ model: S.settings.model, max_tokens: maxTokens, messages }));
   });
 }
 
@@ -628,6 +628,7 @@ async function genSimilar(text, answer, count=3) {
     ? `【必須】元の問題には${hasFigure?'図形':hasGraph?'グラフ':'表'}が含まれています。全${count}問に必ず"visual"フィールドを含めてください。`
     : `表・グラフ・図形が必要な問題のみ"visual"フィールドを追加してください。不要な問題には含めないでください。`;
 
+  // 図形データを含む可能性があるため max_tokens を 4096 に増やす
   const txt = await claude([{ role:'user', content:
     `小学4年生算数。同じ単元・難易度で数値だけ変えた類似問題を${count}問作ってください。
 元の問題: ${text}
@@ -650,7 +651,7 @@ visualの形式:
 
 JSON配列のみで返してください（説明不要）:
 [{"problem":"問題文","answer":"答え","visual":{...}}]`
-  }]);
+  }], 4096);
   console.log('genSimilar response:', txt);
   const m = txt.match(/\[[\s\S]*\]/);
   if (!m) throw new Error('類似問題の生成に失敗しました');
