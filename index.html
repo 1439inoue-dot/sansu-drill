@@ -844,11 +844,28 @@ function manualEntry() {
   render();
 }
 
+function compressB64(b64, maxPx=1024, quality=0.82) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let w=img.width, h=img.height;
+      const scale = Math.min(1, maxPx/w, maxPx/h);
+      w = Math.round(w*scale); h = Math.round(h*scale);
+      const c = document.createElement('canvas');
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(c.toDataURL('image/jpeg', quality).split(',')[1]);
+    };
+    img.onerror = () => resolve(b64);
+    img.src = 'data:image/jpeg;base64,' + b64;
+  });
+}
+
 async function doOCR() {
   if (!S.reg.imgB64) return;
   showLoading('AIが問題を読み取っています…', '数秒かかります');
   try {
-    const b64 = S.reg.imgB64;
+    const b64 = await compressB64(S.reg.imgB64);
     const res = await ocrProblem(b64);
     S.reg.text   = res.problem || '';
     S.reg.answer = res.answer  || '';
