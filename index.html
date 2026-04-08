@@ -370,6 +370,7 @@ let S = {
   settings: {
     apiKey: '',
     model: 'claude-haiku-4-5-20251001',
+    proxyUrl: '',
     supabaseUrl: '',
     supabaseKey: '',
     syncId: '',
@@ -541,10 +542,10 @@ function compressImage(file, maxPx=1024, quality=0.82) {
 // ================================================================
 async function claude(messages) {
   if (!S.settings.apiKey) throw new Error('APIキーが設定されていません（設定画面で入力してください）');
-  // fetchはSafariで"Load failed"になることがあるためXHRを使用
+  if (!S.settings.proxyUrl) throw new Error('プロキシURLが設定されていません（設定画面で入力してください）');
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://api.anthropic.com/v1/messages');
+    xhr.open('POST', S.settings.proxyUrl);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('x-api-key', S.settings.apiKey);
     xhr.setRequestHeader('anthropic-version', '2023-06-01');
@@ -1359,7 +1360,39 @@ function vSettings() {
           console.anthropic.com で取得したキーを入力してください
         </div>
       </div>
+      <div class="form-group" style="margin-top:12px">
+        <label class="form-label">プロキシURL（Cloudflare Worker）</label>
+        <input class="form-input" type="text" id="proxy-in"
+          value="${esc(S.settings.proxyUrl)}"
+          placeholder="https://your-worker.your-name.workers.dev">
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">
+          CORSエラー回避のため必須です。下の手順で取得してください。
+        </div>
+      </div>
       <button class="btn btn-primary" onclick="saveSettings()">💾 保存する</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">🔧 プロキシの設定手順</div>
+      <ol style="font-size:13px;line-height:2.2;padding-left:18px;color:var(--muted)">
+        <li><a href="https://workers.cloudflare.com" target="_blank" style="color:var(--primary)">workers.cloudflare.com</a> で無料アカウントを作成</li>
+        <li>「Create a Worker」をクリック</li>
+        <li>表示されたコードをすべて削除して下のコードを貼り付け</li>
+        <li>「Deploy」ボタンを押す</li>
+        <li>表示されたURLをコピーして上の「プロキシURL」に貼り付け</li>
+      </ol>
+      <div style="margin-top:8px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">貼り付けるコード：</div>
+        <textarea id="worker-code" readonly style="width:100%;height:180px;font-size:10px;font-family:monospace;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px;resize:none">export default {
+  async fetch(request) {
+    const h = {'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,x-api-key,anthropic-version,anthropic-dangerous-allow-browser'};
+    if(request.method==='OPTIONS') return new Response(null,{headers:h});
+    const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':request.headers.get('x-api-key')||'','anthropic-version':'2023-06-01','anthropic-dangerous-allow-browser':'true'},body:request.body});
+    return new Response(res.body,{status:res.status,headers:{...h,'Content-Type':'application/json'}});
+  }
+}</textarea>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="navigator.clipboard.writeText(document.getElementById('worker-code').value).then(()=>alert('コピーしました！'))">📋 コードをコピー</button>
+      </div>
     </div>
 
     <div class="card">
@@ -1434,6 +1467,7 @@ function vSettings() {
 
 function saveSettings() {
   S.settings.apiKey = document.getElementById('key-in').value.trim();
+  S.settings.proxyUrl = document.getElementById('proxy-in').value.trim();
   save();
   alert('保存しました！');
 }
