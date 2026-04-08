@@ -412,7 +412,7 @@ let S = {
   // register wizard
   reg: { step:1, file:null, imgDataUrl:null, text:'', answer:'', note:'', tag:'', visual:null, lastId:null, multiProblems:null, multiIdx:0 },
   // test session
-  ses: { queue:[], idx:0, showAns:false, finished:false, correct:0, wrong:0 },
+  ses: { queue:[], idx:0, finished:false, correct:0, wrong:0 },
 };
 
 function load() {
@@ -905,19 +905,6 @@ function vHome() {
   });
   const maxTotal = Math.max(...days7.map(d=>d.total), 1);
 
-  // 単元別集計（苦手TOP3）
-  const tagStats = {};
-  for (const p of S.problems) {
-    const tag = p.tag || 'その他';
-    if (!tagStats[tag]) tagStats[tag] = { ok:0, ng:0 };
-    tagStats[tag].ok += p.okCnt||0;
-    tagStats[tag].ng += p.ngCnt||0;
-  }
-  const weakTags = Object.entries(tagStats)
-    .filter(([,v]) => v.ng > 0)
-    .sort((a,b) => b[1].ng - a[1].ng)
-    .slice(0,3);
-
   return `
     ${noKey ? `<div class="alert alert-warning">⚠️ まず「設定」でAPIキーを入力してください</div>` : ''}
 
@@ -977,26 +964,6 @@ function vHome() {
       </div>
     </div>
 
-    <!-- 苦手単元 -->
-    ${weakTags.length > 0 ? `
-      <div class="card">
-        <div class="section-title">⚠️ 間違いが多い単元</div>
-        ${weakTags.map(([tag,v]) => {
-          const total = v.ok + v.ng;
-          const pct = Math.round(v.ok/total*100);
-          return `
-            <div style="margin-bottom:10px">
-              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-                <span><span class="badge badge-purple">${esc(tag)}</span></span>
-                <span style="color:var(--muted)">正解率 ${pct}%（${v.ng}回ミス）</span>
-              </div>
-              <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
-                <div style="height:100%;width:${pct}%;background:var(--success);border-radius:3px"></div>
-              </div>
-            </div>`;
-        }).join('')}
-      </div>
-    ` : ''}
   `;
 }
 
@@ -1313,22 +1280,7 @@ function resetReg() {
 // ================================================================
 //  TEST VIEW
 // ================================================================
-async function startTest() {
-  // 2回目以降で類似問題が未生成の問題を自動生成
-  const needsSimilar = dueToday().filter(p => (p.rep||0) >= 1 && !p.similar?.length);
-  if (needsSimilar.length > 0) {
-    S.ses = { queue:[], idx:0, showAns:false, finished:false, correct:0, wrong:0 };
-    go('test');
-    showLoading('類似問題を自動生成しています…', `${needsSimilar.length}問分（数秒かかります）`);
-    for (const p of needsSimilar) {
-      try {
-        p.similar = await genSimilar(p.text, p.answer, 3, p.visual || null);
-      } catch(e) {
-        // 生成失敗時は元の問題をそのまま出題
-      }
-    }
-    save();
-  }
+function startTest() {
   S.ses = { queue:buildQueue(), idx:0, finished:false, correct:0, wrong:0, missed:[], result:null };
   go('test');
 }
@@ -1529,9 +1481,6 @@ function vList() {
         <h3>${esc(p.text)}</h3>
         <div class="btn-row">
           <button class="btn btn-outline btn-sm" onclick="editProblem('${p.id}')">編集</button>
-          <button class="btn btn-primary btn-sm" onclick="openSimModal('${p.id}')">
-            ${p.similar?.length ? `類似追加` : `類似生成`}
-          </button>
           <button class="btn btn-gray btn-sm"    onclick="delProblem('${p.id}')">削除</button>
         </div>
       </div>
@@ -1646,60 +1595,6 @@ function saveEdit(id, btn) {
   save();
   btn.closest('.modal-overlay').remove();
   render();
-}
-
-function openSimModal(id) {
-  const p = S.problems.find(x=>x.id===id);
-  if (!p) return;
-  const el = document.createElement('div');
-  el.className = 'modal-overlay';
-  el.innerHTML = `
-    <div class="modal">
-      <div class="modal-title">類似問題を生成する</div>
-      ${p.similar?.length ? `<div class="alert alert-info">現在 ${p.similar.length}問の類似問題があります。追加で生成します。</div>` : ''}
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-        <label class="form-label" style="margin:0;white-space:nowrap">生成する問題数:</label>
-        <select class="form-input" id="modal-sim-count" style="width:auto;padding:8px 12px">
-          <option value="1">1問</option>
-          <option value="2">2問</option>
-          <option value="3" selected>3問</option>
-          <option value="4">4問</option>
-          <option value="5">5問</option>
-        </select>
-      </div>
-      <div id="modal-sim-result"></div>
-      <button class="btn btn-primary" id="modal-sim-btn" onclick="doSimModal('${id}',this)">🤖 生成する</button>
-      <button class="btn btn-gray" style="margin-top:8px" onclick="this.closest('.modal-overlay').remove();render()">閉じる</button>
-    </div>
-  `;
-  el.addEventListener('click', e=>{ if(e.target===el){ el.remove(); render(); } });
-  document.body.appendChild(el);
-}
-
-async function doSimModal(id, btn) {
-  const p = S.problems.find(x=>x.id===id);
-  if (!p) return;
-  const count = parseInt(document.getElementById('modal-sim-count').value);
-  btn.disabled = true; btn.textContent = '生成中…';
-  const resultEl = document.getElementById('modal-sim-result');
-  try {
-    const sims = await genSimilar(p.text, p.answer, count, p.visual || null);
-    p.similar = [...(p.similar||[]), ...sims];
-    save();
-    resultEl.innerHTML = `
-      <div class="alert alert-success">✅ ${sims.length}問追加しました（合計${p.similar.length}問）</div>
-      ${sims.map((s,i)=>`
-        <div class="card">
-          <div style="font-size:13px;line-height:1.5">${esc(s.problem)}</div>
-          <div style="color:var(--success);font-weight:600;font-size:13px;margin-top:6px">答え: ${esc(s.answer)}</div>
-        </div>
-      `).join('')}
-    `;
-    btn.textContent = 'さらに生成する'; btn.disabled = false;
-  } catch(e) {
-    resultEl.innerHTML = `<div class="alert alert-danger">エラー: ${esc(e.message)}</div>`;
-    btn.textContent = '再試行'; btn.disabled = false;
-  }
 }
 
 function delProblem(id) {
